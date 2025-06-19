@@ -12,12 +12,13 @@ typedef struct Chunk {
     int         len;
     int         cap;
     uint8_t*    code;
+    int*        lines;
     Value_Array constants;
 } Chunk;
 
 void chunk_init(Chunk* chunk);
 void chunk_free(Chunk* chunk);
-void chunk_write(Chunk* chunk, uint8_t byte);
+void chunk_write(Chunk* chunk, uint8_t byte, int line);
 int chunk_constants_add(Chunk* chunk, Value value);
 
 #define INTERP_CHUNK_H
