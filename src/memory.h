@@ -1,5 +1,7 @@
 #ifndef INTERP_MEMORY_H
 
+// TODO(AJ): Use own built allocator to avoid using stdlib realloc.
+
 #include "common.h"
 
 #define GROW_CAPACITY(capacity) ((capacity) < 8 ? 8 : (capacity) * 2)
