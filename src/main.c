@@ -3,6 +3,7 @@
 #include "debug.h"
 
 #include "memory.c"
+#include "value.c"
 #include "chunk.c"
 #include "debug.c"
 
@@ -11,9 +12,16 @@ int main (int argc, const char* argv[]) {
     (void) argv;
 
     Chunk chunk;
-    init_chunk(&chunk);
-    write_chunk(&chunk, OP_RETURN);
-    disassemble_chunk(&chunk, "Test chunk");
-    free_chunk(&chunk);
+    chunk_init(&chunk);
+
+    int constant_idx = chunk_constants_add(&chunk, 1.2);
+    chunk_write(&chunk, OP_CONSTANT);
+    chunk_write(&chunk, constant_idx);
+
+    chunk_write(&chunk, OP_RETURN);
+
+    chunk_disassemble(&chunk, "Test chunk");
+
+    chunk_free(&chunk);
     return 0;
 }

@@ -1,20 +1,24 @@
 #ifndef INTERP_CHUNK_H
 
 #include "common.h"
+#include "value.h"
 
 typedef enum Op_Code {
+    OP_CONSTANT,
     OP_RETURN,
 } OpCode;
 
 typedef struct Chunk {
-    int      len;
-    int      cap;
-    uint8_t* code;
+    int         len;
+    int         cap;
+    uint8_t*    code;
+    Value_Array constants;
 } Chunk;
 
-void init_chunk(Chunk* chunk);
-void free_chunk(Chunk* chunk);
-void write_chunk(Chunk* chunk, uint8_t byte);
+void chunk_init(Chunk* chunk);
+void chunk_free(Chunk* chunk);
+void chunk_write(Chunk* chunk, uint8_t byte);
+int chunk_constants_add(Chunk* chunk, Value value);
 
 #define INTERP_CHUNK_H
 #endif
