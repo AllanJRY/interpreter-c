@@ -6,7 +6,13 @@
 
 VM vm;
 
-void vm_init(void) { }
+static void _vm_stack_reset(void) {
+    vm.stack_top = vm.stack;
+}
+
+void vm_init(void) {
+    _vm_stack_reset();
+}
 
 void vm_free(void) { }
 
@@ -43,4 +49,14 @@ Interpret_Result vm_interpret(Chunk* chunk) {
     vm.chunk = chunk;
     vm.ip    = vm.chunk->code;
     return _vm_run();
+}
+
+void vm_stack_push(Value value) {
+    *vm.stack_top = value;
+    vm.stack_top += 1;
+}
+
+Value vm_stack_pop(void) {
+    vm.stack_top -= 1;
+    return *vm.stack_top;
 }

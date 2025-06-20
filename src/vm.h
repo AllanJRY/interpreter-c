@@ -1,10 +1,15 @@
 #ifndef INTERP_VM_H
 
 #include "chunk.h"
+#include "value.h"
+
+#define STACK_MAX 256
 
 typedef struct VM {
     Chunk*   chunk;
-    uint8_t* ip; // Instruction pointer.
+    uint8_t* ip; // Instruction pointer.l
+    Value    stack[STACK_MAX];
+    Value*   stack_top;
 } VM;
 
 typedef enum Interpret_Result {
@@ -16,6 +21,8 @@ typedef enum Interpret_Result {
 void vm_init(void);
 void vm_free(void);
 Interpret_Result vm_interpret(Chunk* chunk);
+void vm_stack_push(Value value);
+Value vm_stack_pop(void);
 
 #define INTERP_VM_H
 #endif
