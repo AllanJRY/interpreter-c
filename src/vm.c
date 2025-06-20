@@ -41,6 +41,10 @@ static Interpret_Result _vm_run(void) {
                 vm_stack_push(constant);
                 break;
             }
+            case OP_NEGATE: {
+                vm_stack_push( - vm_stack_pop());
+                break;
+            }
             case OP_RETURN: {
                 value_print(vm_stack_pop());
                 printf("\n");
