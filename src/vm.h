@@ -20,7 +20,7 @@ typedef enum Interpret_Result {
 
 void vm_init(void);
 void vm_free(void);
-Interpret_Result vm_interpret(Chunk* chunk);
+Interpret_Result vm_interpret(const char* source);
 void vm_stack_push(Value value);
 Value vm_stack_pop(void);
 

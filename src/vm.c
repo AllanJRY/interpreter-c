@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 #include "common.h"
+#include "compiler.h"
 #include "debug.h"
 #include "vm.h"
 
@@ -82,10 +83,9 @@ static Interpret_Result _vm_run(void) {
     #undef BINARY_OP
 }
 
-Interpret_Result vm_interpret(Chunk* chunk) {
-    vm.chunk = chunk;
-    vm.ip    = vm.chunk->code;
-    return _vm_run();
+Interpret_Result vm_interpret(const char* source) {
+    compiler_compile(source);
+    return INTERPRET_OK;
 }
 
 void vm_stack_push(Value value) {
