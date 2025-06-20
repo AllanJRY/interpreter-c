@@ -31,6 +31,18 @@ int instruction_disassemble(Chunk* chunk, int offset) {
         case OP_CONSTANT: {
             return instruction_constant("OP_CONSTANT", chunk, offset);
         }
+        case OP_ADD: {
+            return instruction_simple("OP_ADD", offset);
+        }
+        case OP_SUBTRACT: {
+            return instruction_simple("OP_SUBTRACT", offset);
+        }
+        case OP_MULTIPLY: {
+            return instruction_simple("OP_MULTIPLY", offset);
+        }
+        case OP_DIVIDE: {
+            return instruction_simple("OP_DIVIDE", offset);
+        }
         case OP_NEGATE: {
             return instruction_simple("OP_NEGATE", offset);
         }

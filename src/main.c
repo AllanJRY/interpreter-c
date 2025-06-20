@@ -20,8 +20,23 @@ int main (int argc, const char* argv[]) {
     int constant_idx = chunk_constants_add(&chunk, 1.2);
     chunk_write(&chunk, OP_CONSTANT, 123);
     chunk_write(&chunk, constant_idx, 123);
+
+    constant_idx = chunk_constants_add(&chunk, 3.4);
+    chunk_write(&chunk, OP_CONSTANT, 123);
+    chunk_write(&chunk, constant_idx, 123);
+
+    chunk_write(&chunk, OP_ADD, 123);
+
+    constant_idx = chunk_constants_add(&chunk, 5.6);
+    chunk_write(&chunk, OP_CONSTANT, 123);
+    chunk_write(&chunk, constant_idx, 123);
+
+    chunk_write(&chunk, OP_DIVIDE, 123);
+
     chunk_write(&chunk, OP_NEGATE, 123);
+
     chunk_write(&chunk, OP_RETURN, 123);
+
 
     chunk_disassemble(&chunk, "Test chunk");
     vm_interpret(&chunk);

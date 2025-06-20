@@ -21,6 +21,12 @@ static Interpret_Result _vm_run(void) {
     //            and then, and only then, we increment the instruction pointer address.
     #define READ_BYTE() (*vm.ip++)  
     #define READ_CONSTANT() (vm.chunk->constants.values[READ_BYTE()])  
+    #define BINARY_OP(op)          \
+    do {                           \
+        double b = vm_stack_pop(); \
+        double a = vm_stack_pop(); \
+        vm_stack_push(a op b);     \
+    } while (false)                \
 
     for(;;) {
         #ifdef DEBUG_TRACE_EXECUTION
@@ -41,6 +47,22 @@ static Interpret_Result _vm_run(void) {
                 vm_stack_push(constant);
                 break;
             }
+            case OP_ADD: {
+                BINARY_OP(+);
+                break;
+            }
+            case OP_SUBTRACT: {
+                BINARY_OP(-);
+                break;
+            }
+            case OP_MULTIPLY: {
+                BINARY_OP(*);
+                break;
+            }
+            case OP_DIVIDE: {
+                BINARY_OP(/);
+                break;
+            }
             case OP_NEGATE: {
                 vm_stack_push( - vm_stack_pop());
                 break;
@@ -55,6 +77,7 @@ static Interpret_Result _vm_run(void) {
 
     #undef READ_BYTE
     #undef READ_CONSTANT
+    #undef BINARY_OP
 }
 
 Interpret_Result vm_interpret(Chunk* chunk) {
