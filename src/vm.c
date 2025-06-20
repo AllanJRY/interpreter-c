@@ -64,7 +64,9 @@ static Interpret_Result _vm_run(void) {
                 break;
             }
             case OP_NEGATE: {
-                vm_stack_push( - vm_stack_pop());
+                *(vm.stack_top - 1) = - *(vm.stack_top - 1);
+                // previously (the solution above avoid modifying the stack_top ptr unnecessarily) :
+                // vm_stack_push( - vm_stack_pop());
                 break;
             }
             case OP_RETURN: {
