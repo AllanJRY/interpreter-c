@@ -1,6 +1,8 @@
 #ifndef INTERP_COMPILER_H
 
-void compiler_compile(const char* source);
+#include "vm.h"
+
+bool compiler_compile(const char* source, Chunk* chunk);
 
 #define INTERP_COMPILER_H
 #endif

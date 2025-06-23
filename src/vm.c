@@ -84,8 +84,21 @@ static Interpret_Result _vm_run(void) {
 }
 
 Interpret_Result vm_interpret(const char* source) {
-    compiler_compile(source);
-    return INTERPRET_OK;
+    Chunk chunk;
+    chunk_init(&chunk);
+
+    if (!compiler_compile(source, &chunk)) {
+        chunk_free(&chunk);
+        return INTERPRET_COMPILE_ERROR;
+    }
+
+    vm.chunk = &chunk;
+    vm.ip    = vm.chunk->code;
+
+    Interpret_Result result = _vm_run();
+
+    chunk_free(&chunk);
+    return result;
 }
 
 void vm_stack_push(Value value) {
