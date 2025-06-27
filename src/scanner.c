@@ -65,6 +65,7 @@ Scanner_Token scanner_scan_token(void) {
         case '<': return _token_make(_scanner_advance_if_match('=') ? TOKEN_LESS_EQUAL : TOKEN_LESS);
         case '>': return _token_make(_scanner_advance_if_match('=') ? TOKEN_GREATER_EQUAL : TOKEN_GREATER);
         case '"': return _token_make_string();
+        case '\n': return _token_make_string();
     }
 
     return _token_error("Unexpected character.");
@@ -114,16 +115,16 @@ static void _scanner_skip_whitespace(void) {
                 break;
             }
             case '\n': {
+                scanner.line += 1;
+                _scanner_advance();
+                break;
+            }
+            case '/': {
                 if (_scanner_peek_next() == '/') {
                     while(_scanner_peek() != '\n' && !_scanner_is_at_end()) _scanner_advance();
                 } else {
                     return;
                 }
-                break;
-            }
-            case '/': {
-                scanner.line += 1;
-                _scanner_advance();
                 break;
             }
             default: return;

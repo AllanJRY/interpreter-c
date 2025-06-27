@@ -5,6 +5,10 @@
 #include "compiler.h"
 #include "scanner.h"
 
+#ifdef DEBUG_PRINT_CODE
+#include "debug.h"
+#endif
+
 typedef struct Parser {
     Scanner_Token current;
     Scanner_Token previous;
@@ -199,6 +203,11 @@ static void _expression(void) {
 
 static void _compiler_end(void) {
     _compiler_emit_return();
+    #ifdef DEBUG_PRINT_CODE
+    if (!parser.had_error) {
+        chunk_disassemble(_compiler_current_chunk(), "code");
+    }
+    #endif
 }
 
 static void _compiler_emit_byte(uint8_t byte) {
