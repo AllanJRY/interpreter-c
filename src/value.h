@@ -17,7 +17,7 @@ typedef struct Value {
 } Value;
 
 #define V_BOOL(value) ((Value) { VAL_BOOL, {.boolean = value} })
-#define V_NIL(value) ((Value) { VAL_NIL, {.number = 0} })
+#define V_NIL ((Value) { VAL_NIL, {.number = 0} })
 #define V_NUMBER(value) ((Value) { VAL_NUMBER, {.number = value} })
 
 #define IS_BOOL(value) ((value).type == VAL_BOOL)

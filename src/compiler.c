@@ -51,6 +51,7 @@ static void _number(void);
 static void _grouping(void);
 static void _unary(void);
 static void _binary(void);
+static void _literal(void);
 static void _expression(void);
 
 static void   _compiler_end(void);
@@ -92,17 +93,17 @@ Parse_Rule rules[] = {
     [TOKEN_AND]           = {NULL,      NULL,    PREC_NONE},
     [TOKEN_CLASS]         = {NULL,      NULL,    PREC_NONE},
     [TOKEN_ELSE]          = {NULL,      NULL,    PREC_NONE},
-    [TOKEN_FALSE]         = {NULL,      NULL,    PREC_NONE},
+    [TOKEN_FALSE]         = {_literal,  NULL,    PREC_NONE},
     [TOKEN_FOR]           = {NULL,      NULL,    PREC_NONE},
     [TOKEN_FUN]           = {NULL,      NULL,    PREC_NONE},
     [TOKEN_IF]            = {NULL,      NULL,    PREC_NONE},
-    [TOKEN_NIL]           = {NULL,      NULL,    PREC_NONE},
+    [TOKEN_NIL]           = {_literal,  NULL,    PREC_NONE},
     [TOKEN_OR]            = {NULL,      NULL,    PREC_NONE},
     [TOKEN_PRINT]         = {NULL,      NULL,    PREC_NONE},
     [TOKEN_RETURN]        = {NULL,      NULL,    PREC_NONE},
     [TOKEN_SUPER]         = {NULL,      NULL,    PREC_NONE},
     [TOKEN_THIS]          = {NULL,      NULL,    PREC_NONE},
-    [TOKEN_TRUE]          = {NULL,      NULL,    PREC_NONE},
+    [TOKEN_TRUE]          = {_literal,  NULL,    PREC_NONE},
     [TOKEN_VAR]           = {NULL,      NULL,    PREC_NONE},
     [TOKEN_WHILE]         = {NULL,      NULL,    PREC_NONE},
     [TOKEN_ERROR]         = {NULL,      NULL,    PREC_NONE},
@@ -177,6 +178,25 @@ static void _binary(void) {
         }
         default : return; // Unreachable.
     }
+}
+
+static void _literal(void) {
+    switch(parser.previous.type) {
+        case TOKEN_FALSE: {
+            _compiler_emit_byte(OP_FALSE);
+            break;
+        }
+        case TOKEN_NIL: {
+            _compiler_emit_byte(OP_NIL);
+            break;
+        }
+        case TOKEN_TRUE: {
+            _compiler_emit_byte(OP_TRUE);
+            break;
+        }
+        default: return; // Unreachable.
+    }
+
 }
 
 static void _parse_precedence(Precedence precedence) {

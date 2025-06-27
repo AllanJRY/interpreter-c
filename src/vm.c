@@ -54,6 +54,18 @@ static Interpret_Result _vm_run(void) {
                 vm_stack_push(constant);
                 break;
             }
+            case OP_NIL: {
+                vm_stack_push(V_NIL);
+                break;
+            }
+            case OP_TRUE: {
+                vm_stack_push(V_BOOL(true));
+                break;
+            }
+            case OP_FALSE: {
+                vm_stack_push(V_BOOL(false));
+                break;
+            }
             case OP_ADD: {
                 BINARY_OP(V_NUMBER, +);
                 break;
