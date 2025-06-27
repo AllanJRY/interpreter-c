@@ -52,6 +52,9 @@ int instruction_disassemble(Chunk* chunk, int offset) {
         case OP_DIVIDE: {
             return instruction_simple("OP_DIVIDE", offset);
         }
+        case OP_NOT: {
+            return instruction_simple("OP_NOT", offset);
+        }
         case OP_NEGATE: {
             return instruction_simple("OP_NEGATE", offset);
         }

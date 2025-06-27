@@ -8,6 +8,10 @@
 
 static void _vm_runtime_error(const char* format, ...);
 
+static bool _is_falsey(Value value);
+
+static Interpret_Result _vm_run(void);
+
 static Value _vm_stack_peek(int distance);
 static void  _vm_stack_reset(void);
 
@@ -18,6 +22,24 @@ void vm_init(void) {
 }
 
 void vm_free(void) { }
+
+Interpret_Result vm_interpret(const char* source) {
+    Chunk chunk;
+    chunk_init(&chunk);
+
+    if (!compiler_compile(source, &chunk)) {
+        chunk_free(&chunk);
+        return INTERPRET_COMPILE_ERROR;
+    }
+
+    vm.chunk = &chunk;
+    vm.ip    = vm.chunk->code;
+
+    Interpret_Result result = _vm_run();
+
+    chunk_free(&chunk);
+    return result;
+}
 
 static Interpret_Result _vm_run(void) {
     // NOTE(AJA): Post increment is important here, because we return the current instruction pointer address,
@@ -82,6 +104,10 @@ static Interpret_Result _vm_run(void) {
                 BINARY_OP(V_NUMBER, /);
                 break;
             }
+            case OP_NOT: {
+                *(vm.stack_top - 1) = V_BOOL(_is_falsey(*(vm.stack_top - 1)));
+                break;
+            }
             case OP_NEGATE: {
                 if (!IS_NUMBER(_vm_stack_peek(0))) {
                     _vm_runtime_error("Operand must be a number.");
@@ -106,22 +132,8 @@ static Interpret_Result _vm_run(void) {
     #undef BINARY_OP
 }
 
-Interpret_Result vm_interpret(const char* source) {
-    Chunk chunk;
-    chunk_init(&chunk);
-
-    if (!compiler_compile(source, &chunk)) {
-        chunk_free(&chunk);
-        return INTERPRET_COMPILE_ERROR;
-    }
-
-    vm.chunk = &chunk;
-    vm.ip    = vm.chunk->code;
-
-    Interpret_Result result = _vm_run();
-
-    chunk_free(&chunk);
-    return result;
+static bool _is_falsey(Value value) {
+    return IS_NIL(value) || (IS_BOOL(value) && !AS_BOOL(value));
 }
 
 void vm_stack_push(Value value) {

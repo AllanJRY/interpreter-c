@@ -79,7 +79,7 @@ Parse_Rule rules[] = {
     [TOKEN_SEMICOLON]     = {NULL,      NULL,    PREC_NONE},
     [TOKEN_SLASH]         = {NULL,      _binary, PREC_FACTOR},
     [TOKEN_STAR]          = {NULL,      _binary, PREC_FACTOR},
-    [TOKEN_BANG]          = {NULL,      NULL,    PREC_NONE},
+    [TOKEN_BANG]          = {_unary,    NULL,    PREC_NONE},
     [TOKEN_BANG_EQUAL]    = {NULL,      NULL,    PREC_NONE},
     [TOKEN_EQUAL]         = {NULL,      NULL,    PREC_NONE},
     [TOKEN_EQUAL_EQUAL]   = {NULL,      NULL,    PREC_NONE},
@@ -145,6 +145,10 @@ static void _unary(void) {
 
     // Emit the operator instruction.
     switch(operator_type) {
+        case TOKEN_BANG: {
+            _compiler_emit_byte(OP_NOT);
+            break;
+        } 
         case TOKEN_MINUS: {
             _compiler_emit_byte(OP_NEGATE);
             break;
