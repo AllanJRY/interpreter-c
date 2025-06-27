@@ -2,7 +2,30 @@
 
 #include "common.h"
 
-typedef double Value;
+typedef enum Value_Type {
+    VAL_BOOL,
+    VAL_NIL,
+    VAL_NUMBER,
+} Value_Type;
+
+typedef struct Value {
+    Value_Type type;
+    union {
+        bool   boolean;
+        double number;
+    } as;
+} Value;
+
+#define V_BOOL(value) ((Value) { VAL_BOOL, {.boolean = value} })
+#define V_NIL(value) ((Value) { VAL_NIL, {.number = 0} })
+#define V_NUMBER(value) ((Value) { VAL_NUMBER, {.number = value} })
+
+#define IS_BOOL(value) ((value).type == VAL_BOOL)
+#define IS_NIL(value) ((value).type == VAL_NIL)
+#define IS_NUMBER(value) ((value).type == VAL_NUMBER)
+
+#define AS_BOOL(value) ((value).as.boolean)
+#define AS_NUMBER(value) ((value).as.number)
 
 typedef struct Value_Array {
     int    cap;

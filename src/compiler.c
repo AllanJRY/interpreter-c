@@ -128,7 +128,7 @@ static Parse_Rule* _parse_rule_get(Scanner_Token_Type token_type) {
 
 static void _number(void) {
     double value = strtod(parser.previous.start, NULL);
-    _compiler_emit_constant(value);
+    _compiler_emit_constant(V_NUMBER(value));
 }
 
 static void _grouping(void) {
