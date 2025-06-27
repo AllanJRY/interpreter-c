@@ -16,6 +16,8 @@ typedef struct Value {
     } as;
 } Value;
 
+bool value_equal(Value a, Value b);
+
 #define V_BOOL(value) ((Value) { VAL_BOOL, {.boolean = value} })
 #define V_NIL ((Value) { VAL_NIL, {.number = 0} })
 #define V_NUMBER(value) ((Value) { VAL_NUMBER, {.number = value} })
@@ -36,6 +38,7 @@ typedef struct Value_Array {
 void value_array_init(Value_Array* array);
 void value_array_write(Value_Array* array, Value value);
 void value_array_free(Value_Array* array);
+
 
 void value_print(Value value);
 

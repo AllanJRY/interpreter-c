@@ -3,6 +3,17 @@
 #include "memory.h"
 #include "value.h"
 
+bool value_equal(Value a, Value b) {
+    if (a.type != b.type) return false;
+
+    switch(a.type) {
+        case VAL_BOOL:   return AS_BOOL(a) == AS_BOOL(b);
+        case VAL_NIL:    return true;
+        case VAL_NUMBER: return AS_NUMBER(a) == AS_NUMBER(b);
+        default:    return false; // Unreachable.
+    }
+}
+
 void value_array_init(Value_Array* array) {
     array->cap    = 0;
     array->len    = 0;

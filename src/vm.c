@@ -88,6 +88,20 @@ static Interpret_Result _vm_run(void) {
                 vm_stack_push(V_BOOL(false));
                 break;
             }
+            case OP_EQUAL: {
+                Value a = vm_stack_pop();
+                Value b = vm_stack_pop();
+                vm_stack_push(V_BOOL(value_equal(a ,b)));
+                break;
+            }
+            case OP_GREATER: {
+                BINARY_OP(V_BOOL, >);
+                break;
+            }
+            case OP_LESS: {
+                BINARY_OP(V_BOOL, <);
+                break;
+            }
             case OP_ADD: {
                 BINARY_OP(V_NUMBER, +);
                 break;

@@ -80,13 +80,13 @@ Parse_Rule rules[] = {
     [TOKEN_SLASH]         = {NULL,      _binary, PREC_FACTOR},
     [TOKEN_STAR]          = {NULL,      _binary, PREC_FACTOR},
     [TOKEN_BANG]          = {_unary,    NULL,    PREC_NONE},
-    [TOKEN_BANG_EQUAL]    = {NULL,      NULL,    PREC_NONE},
+    [TOKEN_BANG_EQUAL]    = {NULL,      _binary, PREC_EQUALITY},
     [TOKEN_EQUAL]         = {NULL,      NULL,    PREC_NONE},
-    [TOKEN_EQUAL_EQUAL]   = {NULL,      NULL,    PREC_NONE},
-    [TOKEN_GREATER]       = {NULL,      NULL,    PREC_NONE},
-    [TOKEN_GREATER_EQUAL] = {NULL,      NULL,    PREC_NONE},
-    [TOKEN_LESS]          = {NULL,      NULL,    PREC_NONE},
-    [TOKEN_LESS_EQUAL]    = {NULL,      NULL,    PREC_NONE},
+    [TOKEN_EQUAL_EQUAL]   = {NULL,      _binary, PREC_EQUALITY},
+    [TOKEN_GREATER]       = {NULL,      _binary, PREC_COMPARISON},
+    [TOKEN_GREATER_EQUAL] = {NULL,      _binary, PREC_COMPARISON},
+    [TOKEN_LESS]          = {NULL,      _binary, PREC_COMPARISON},
+    [TOKEN_LESS_EQUAL]    = {NULL,      _binary, PREC_COMPARISON},
     [TOKEN_IDENTIFIER]    = {NULL,      NULL,    PREC_NONE},
     [TOKEN_STRING]        = {NULL,      NULL,    PREC_NONE},
     [TOKEN_NUMBER]        = {_number,   NULL,    PREC_NONE},
@@ -164,6 +164,30 @@ static void _binary(void) {
     _parse_precedence((Precedence) (rule->precedence + 1));
 
     switch (operator_type) {
+        case TOKEN_BANG_EQUAL: {
+            _compiler_emit_bytes(OP_EQUAL, OP_NOT);
+            break;
+        }
+        case TOKEN_EQUAL_EQUAL: {
+            _compiler_emit_byte(OP_EQUAL);
+            break;
+        }
+        case TOKEN_GREATER: {
+            _compiler_emit_byte(OP_GREATER);
+            break;
+        }
+        case TOKEN_GREATER_EQUAL: {
+            _compiler_emit_bytes(OP_LESS, OP_NOT);
+            break;
+        }
+        case TOKEN_LESS: {
+            _compiler_emit_byte(OP_LESS);
+            break;
+        }
+        case TOKEN_LESS_EQUAL: {
+            _compiler_emit_bytes(OP_GREATER, OP_NOT);
+            break;
+        }
         case TOKEN_PLUS: {
             _compiler_emit_byte(OP_ADD);
             break;

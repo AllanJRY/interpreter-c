@@ -40,6 +40,15 @@ int instruction_disassemble(Chunk* chunk, int offset) {
         case OP_FALSE: {
             return instruction_simple("OP_FALSE", offset);
         }
+        case OP_EQUAL: {
+            return instruction_simple("OP_EQUAL", offset);
+        }
+        case OP_GREATER: {
+            return instruction_simple("OP_GREATER", offset);
+        }
+        case OP_LESS: {
+            return instruction_simple("OP_LESS", offset);
+        }
         case OP_ADD: {
             return instruction_simple("OP_ADD", offset);
         }
