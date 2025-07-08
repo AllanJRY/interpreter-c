@@ -52,6 +52,7 @@ static void _grouping(void);
 static void _unary(void);
 static void _binary(void);
 static void _literal(void);
+static void _string(void);
 static void _expression(void);
 
 static void   _compiler_end(void);
@@ -88,7 +89,7 @@ Parse_Rule rules[] = {
     [TOKEN_LESS]          = {NULL,      _binary, PREC_COMPARISON},
     [TOKEN_LESS_EQUAL]    = {NULL,      _binary, PREC_COMPARISON},
     [TOKEN_IDENTIFIER]    = {NULL,      NULL,    PREC_NONE},
-    [TOKEN_STRING]        = {NULL,      NULL,    PREC_NONE},
+    [TOKEN_STRING]        = {_string,   NULL,    PREC_NONE},
     [TOKEN_NUMBER]        = {_number,   NULL,    PREC_NONE},
     [TOKEN_AND]           = {NULL,      NULL,    PREC_NONE},
     [TOKEN_CLASS]         = {NULL,      NULL,    PREC_NONE},
@@ -224,7 +225,10 @@ static void _literal(void) {
         }
         default: return; // Unreachable.
     }
+}
 
+static void _string(void) {
+    _compiler_emit_constant(V_OBJ(string_copy(parser.previous.start + 1, parser.previous.length - 2)));
 }
 
 static void _parse_precedence(Precedence precedence) {

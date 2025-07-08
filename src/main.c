@@ -12,6 +12,7 @@
 
 #include "memory.c"
 #include "value.c"
+#include "object.c"
 #include "chunk.c"
 #include "scanner.c"
 #include "compiler.c"
