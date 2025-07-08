@@ -1,14 +1,18 @@
 #include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "common.h"
 #include "compiler.h"
 #include "debug.h"
+#include "memory.h"
+#include "object.h"
 #include "vm.h"
 
 static void _vm_runtime_error(const char* format, ...);
 
 static bool _is_falsey(Value value);
+static void _concatenate(void);
 
 static Interpret_Result _vm_run(void);
 
@@ -103,7 +107,17 @@ static Interpret_Result _vm_run(void) {
                 break;
             }
             case OP_ADD: {
-                BINARY_OP(V_NUMBER, +);
+                if(IS_STRING(_vm_stack_peek(0)) && IS_STRING(_vm_stack_peek(1))) {
+                    _concatenate();
+                } else if(IS_NUMBER(_vm_stack_peek(0)) && IS_NUMBER(_vm_stack_peek(1))) {
+                    double b = AS_NUMBER(vm_stack_pop());
+                    double a = AS_NUMBER(vm_stack_pop());
+                    vm_stack_push(V_NUMBER(a + b));
+                } else {
+                    _vm_runtime_error("Operands must be two numbers or two strings.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+
                 break;
             }
             case OP_SUBTRACT: {
@@ -148,6 +162,20 @@ static Interpret_Result _vm_run(void) {
 
 static bool _is_falsey(Value value) {
     return IS_NIL(value) || (IS_BOOL(value) && !AS_BOOL(value));
+}
+
+static void _concatenate(void) {
+    Obj_String* b = AS_STRING(vm_stack_pop());
+    Obj_String* a = AS_STRING(vm_stack_pop());
+
+    int length  = a->length + b->length;
+    char* chars = ALLOCATE(char, length + 1);
+    memcpy(chars, a->chars, a->length);
+    memcpy(chars + a->length, b->chars, b->length);
+    chars[length] = '\0';
+    
+    Obj_String* result = string_take(chars, length);
+    vm_stack_push(V_OBJ(result));
 }
 
 void vm_stack_push(Value value) {

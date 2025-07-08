@@ -28,6 +28,11 @@ Obj_String* string_copy(const char* chars, int length) {
     return _string_allocate(heap_chars, length);
 }
 
+Obj_String* string_take(char* chars, int length) {
+    return _string_allocate(chars, length);
+
+}
+
 void object_print(Value value) {
     switch(OBJ_TYPE(value)) {
         case OBJ_STRING: {

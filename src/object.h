@@ -23,6 +23,7 @@ struct Obj_String {
 };
 
 Obj_String* string_copy(const char* chars, int length);
+Obj_String* string_take(char* chars, int length);
 
 void object_print(Value value);
 
