@@ -10,17 +10,17 @@
 #include "chunk.h"
 #include "debug.h"
 
+#include "vm.c"
 #include "memory.c"
 #include "value.c"
 #include "object.c"
 #include "chunk.c"
 #include "scanner.c"
 #include "compiler.c"
-#include "vm.c"
 #include "debug.c"
 
-static void _repl(void);
-static void _file_run(const char* path);
+static void  _repl(void);
+static void  _file_run(const char* path);
 static char* _file_read(const char* path);
 
 int main (int argc, const char* argv[]) {

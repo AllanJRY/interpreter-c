@@ -23,9 +23,12 @@ VM vm;
 
 void vm_init(void) {
     _vm_stack_reset();
+    vm.objects = NULL;
 }
 
-void vm_free(void) { }
+void vm_free(void) {
+    mem_free_objects();
+}
 
 Interpret_Result vm_interpret(const char* source) {
     Chunk chunk;

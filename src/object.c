@@ -9,8 +9,10 @@
 #define _ALLOCATE_OBJ(type, obj_type) (type*) _object_allocate(sizeof(type), obj_type)
 
 static Obj* _object_allocate(size_t size, Obj_Type type) {
-    Obj* object = (Obj*) reallocate(NULL, 0, size);
+    Obj* object  = (Obj*) reallocate(NULL, 0, size);
     object->type = type;
+    object->next = vm.objects;
+    vm.objects   = object;
     return object;
 }
 

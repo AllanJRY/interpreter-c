@@ -10,6 +10,7 @@ typedef struct VM {
     uint8_t* ip; // Instruction pointer.l
     Value    stack[STACK_MAX];
     Value*   stack_top;
+    Obj*     objects;
 } VM;
 
 typedef enum Interpret_Result {
@@ -17,6 +18,9 @@ typedef enum Interpret_Result {
     INTERPRET_COMPILE_ERROR,
     INTERPRET_RUNTIME_ERROR,
 } Interpret_Result;
+
+// extern used here to access `vm` from other files (compared to the book, I use unit build, so this should not be necessary, but I want to keep this sync with the book).
+extern VM vm;
 
 void vm_init(void);
 void vm_free(void);
