@@ -24,9 +24,11 @@ VM vm;
 void vm_init(void) {
     _vm_stack_reset();
     vm.objects = NULL;
+    table_init(&vm.strings);
 }
 
 void vm_free(void) {
+    table_free(&vm.strings);
     mem_free_objects();
 }
 

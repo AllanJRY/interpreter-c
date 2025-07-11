@@ -32,6 +32,25 @@ bool table_get(Table* table, Obj_String* key, Value* value) {
     return true;
 }
 
+Obj_String* table_find_string(Table* table, const char* chars, int length, uint32_t hash) {
+    if (table->count == 0) return NULL;
+
+    uint32_t index = hash % table->cap;
+    for (;;) {
+        Table_Entry* entry = &table->entries[index];
+        if (entry->key == NULL) {
+            // Stop if we find an empty non-tonbstone entry.
+            if (IS_NIL(entry->value)) return NULL;
+        } else if (entry->key->length == length && entry->key->hash == hash && memcmp(entry->key->chars, chars, length) == 0) {
+            // We found it
+            return entry->key;
+        }
+
+        index = (index + 1) % table->cap;
+    }
+
+}
+
 bool table_set(Table* table, Obj_String* key, Value value) {
     if (table->count + 1 > table->cap * TABLE_MAX_LOAD) {
         int cap = GROW_CAPACITY(table->cap);
