@@ -46,14 +46,19 @@ static void _error_at(Scanner_Token* token, const char* msg);
 
 static uint8_t _make_constant(Value value);
 static void    _parse_precedence(Precedence precedence);
+static bool    _match(Scanner_Token_Type type);
+static bool    _check(Scanner_Token_Type type);
 
+static void _declaration(void);
+static void _statement(void);
+static void _statement_print(void);
+static void _expression(void);
 static void _number(void);
 static void _grouping(void);
 static void _unary(void);
 static void _binary(void);
 static void _literal(void);
 static void _string(void);
-static void _expression(void);
 
 static void   _compiler_end(void);
 static void   _compiler_emit_byte(uint8_t byte);
@@ -113,15 +118,69 @@ Parse_Rule rules[] = {
 
 bool compiler_compile(const char* source, Chunk* chunk) {
     scanner_init(source);
+
     compiling_chunk   = chunk;
     parser.had_error  = false;
     parser.panic_mode = false;
 
     _parser_advance();
-    _expression();
-    _parser_consume(TOKEN_EOF, "Expect end of expression.");
+    while(!_match(TOKEN_EOF)) {
+        _declaration();
+    }
+
     _compiler_end();
+
     return !parser.had_error;
+}
+
+static void _declaration(void) {
+    _statement();
+}
+
+static void _statement(void) {
+    if(_match(TOKEN_PRINT)) {
+        _statement_print();
+    }
+}
+
+static void _statement_print(void) {
+    _expression();
+    _parser_consume(TOKEN_SEMICOLON, "Expect ';' after value.");
+    _compiler_emit_byte(OP_PRINT);
+}
+
+static void _expression(void) {
+    _parse_precedence(PREC_ASSIGNMENT);
+}
+
+static void _parse_precedence(Precedence precedence) {
+    _parser_advance();
+    Parse_Fn prefix_rule = _parse_rule_get(parser.previous.type)->prefix;
+
+    if(prefix_rule == NULL) {
+        _error("Expect expression.");
+        return;
+    }
+
+    prefix_rule();
+
+    while(precedence <= _parse_rule_get(parser.current.type)->precedence) {
+        _parser_advance();
+        Parse_Fn infix_rule = _parse_rule_get(parser.previous.type)->infix;
+        infix_rule();
+    }
+}
+
+static bool _match(Scanner_Token_Type type) {
+    if(!_check(type)) return false;
+    
+    _parser_advance();
+
+    return true;
+}
+
+static bool _check(Scanner_Token_Type type) {
+    return parser.current.type == type;
 }
 
 static Parse_Rule* _parse_rule_get(Scanner_Token_Type token_type) {
@@ -229,28 +288,6 @@ static void _literal(void) {
 
 static void _string(void) {
     _compiler_emit_constant(V_OBJ(string_copy(parser.previous.start + 1, parser.previous.length - 2)));
-}
-
-static void _parse_precedence(Precedence precedence) {
-    _parser_advance();
-    Parse_Fn prefix_rule = _parse_rule_get(parser.previous.type)->prefix;
-
-    if(prefix_rule == NULL) {
-        _error("Expect expression.");
-        return;
-    }
-
-    prefix_rule();
-
-    while(precedence <= _parse_rule_get(parser.current.type)->precedence) {
-        _parser_advance();
-        Parse_Fn infix_rule = _parse_rule_get(parser.previous.type)->infix;
-        infix_rule();
-    }
-}
-
-static void _expression(void) {
-    _parse_precedence(PREC_ASSIGNMENT);
 }
 
 static void _compiler_end(void) {

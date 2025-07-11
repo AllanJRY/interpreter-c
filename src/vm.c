@@ -152,9 +152,13 @@ static Interpret_Result _vm_run(void) {
                 // vm_stack_push( - vm_stack_pop());
                 break;
             }
-            case OP_RETURN: {
+            case OP_PRINT: {
                 value_print(vm_stack_pop());
                 printf("\n");
+                break;
+            }
+            case OP_RETURN: {
+                // Exit interpreter
                 return INTERPRET_OK;
             }
         }
