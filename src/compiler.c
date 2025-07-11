@@ -52,6 +52,7 @@ static bool    _check(Scanner_Token_Type type);
 static void _declaration(void);
 static void _statement(void);
 static void _statement_print(void);
+static void _statement_expression(void);
 static void _expression(void);
 static void _number(void);
 static void _grouping(void);
@@ -140,6 +141,8 @@ static void _declaration(void) {
 static void _statement(void) {
     if(_match(TOKEN_PRINT)) {
         _statement_print();
+    } else {
+        _statement_expression();
     }
 }
 
@@ -147,6 +150,12 @@ static void _statement_print(void) {
     _expression();
     _parser_consume(TOKEN_SEMICOLON, "Expect ';' after value.");
     _compiler_emit_byte(OP_PRINT);
+}
+
+static void _statement_expression(void) {
+    _expression();
+    _parser_consume(TOKEN_SEMICOLON, "Expect ';' after expression.");
+    _compiler_emit_byte(OP_POP);
 }
 
 static void _expression(void) {

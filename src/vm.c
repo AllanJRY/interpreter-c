@@ -97,6 +97,10 @@ static Interpret_Result _vm_run(void) {
                 vm_stack_push(V_BOOL(false));
                 break;
             }
+            case OP_POP: {
+                vm_stack_pop();
+                break;
+            }
             case OP_EQUAL: {
                 Value a = vm_stack_pop();
                 Value b = vm_stack_pop();
