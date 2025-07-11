@@ -43,6 +43,7 @@ static Parse_Rule* _parse_rule_get(Scanner_Token_Type token_type);
 static void _error(const char* msg);
 static void _error_at_current(const char* msg);
 static void _error_at(Scanner_Token* token, const char* msg);
+static void _synchronize_on_panic(void);
 
 static uint8_t _make_constant(Value value);
 static void    _parse_precedence(Precedence precedence);
@@ -136,6 +137,7 @@ bool compiler_compile(const char* source, Chunk* chunk) {
 
 static void _declaration(void) {
     _statement();
+    if(parser.panic_mode) _synchronize_on_panic();
 }
 
 static void _statement(void) {
@@ -386,3 +388,26 @@ static void _error_at(Scanner_Token* token, const char* msg) {
     parser.had_error = true;
 }
 
+static void _synchronize_on_panic(void) {
+    parser.panic_mode = false;
+
+    while (parser.current.type != TOKEN_EOF) {
+        if (parser.previous.type == TOKEN_SEMICOLON) return;
+
+        switch (parser.current.type) {
+            case TOKEN_CLASS:
+            case TOKEN_FUN:
+            case TOKEN_VAR:
+            case TOKEN_FOR:
+            case TOKEN_IF:
+            case TOKEN_WHILE:
+            case TOKEN_PRINT:
+            case TOKEN_RETURN:
+                return;
+
+            default: ; // Do nothing.
+        }
+
+        _parser_advance();
+    }
+}
