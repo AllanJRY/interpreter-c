@@ -18,9 +18,10 @@ struct Obj {
 };
 
 struct Obj_String {
-    Obj   obj;
-    int   length;
-    char* chars;
+    Obj      obj;
+    int      length;
+    char*    chars;
+    uint32_t hash;
 };
 
 Obj_String* string_copy(const char* chars, int length);

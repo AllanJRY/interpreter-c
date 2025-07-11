@@ -13,6 +13,7 @@
 #include "vm.c"
 #include "memory.c"
 #include "value.c"
+#include "table.c"
 #include "object.c"
 #include "chunk.c"
 #include "scanner.c"

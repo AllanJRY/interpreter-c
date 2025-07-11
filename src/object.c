@@ -16,22 +16,35 @@ static Obj* _object_allocate(size_t size, Obj_Type type) {
     return object;
 }
 
-static Obj_String* _string_allocate(char* chars, int length) {
+static Obj_String* _string_allocate(char* chars, int length, uint32_t hash) {
     Obj_String* string = _ALLOCATE_OBJ(Obj_String, OBJ_STRING);
     string->length     = length;
     string->chars      = chars;
+    string->hash       = hash;
     return string;
 }
 
+static uint32_t _string_hash(const char* key, int length) {
+    // FNV-1a hash function.
+    uint32_t hash = 2166136261u;
+    for(int i = 0; i < length; i += 1) {
+        hash ^= (uint8_t) key[i];
+        hash *= 16777619;
+    }
+    return hash;
+}
+
 Obj_String* string_copy(const char* chars, int length) {
+    uint32_t hash = _string_hash(chars, length);
     char* heap_chars = ALLOCATE(char, length + 1);
     memcpy(heap_chars, chars, length);
     heap_chars[length] = '\0';
-    return _string_allocate(heap_chars, length);
+    return _string_allocate(heap_chars, length, hash);
 }
 
 Obj_String* string_take(char* chars, int length) {
-    return _string_allocate(chars, length);
+    uint32_t hash = _string_hash(chars, length);
+    return _string_allocate(chars, length, hash);
 
 }
 
