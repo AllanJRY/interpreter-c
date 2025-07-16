@@ -49,6 +49,7 @@ static uint8_t _make_constant(Value value);
 static void    _parse_precedence(Precedence precedence);
 static uint8_t _variable_parse(const char* error_msg);
 static void    _variable_define(uint8_t global_var_idx);
+static void    _variable_named(Scanner_Token name);
 static uint8_t _constant_identifier(Scanner_Token* name);
 static bool    _match(Scanner_Token_Type type);
 static bool    _check(Scanner_Token_Type type);
@@ -65,6 +66,7 @@ static void _unary(void);
 static void _binary(void);
 static void _literal(void);
 static void _string(void);
+static void _variable(void);
 
 static void   _compiler_end(void);
 static void   _compiler_emit_byte(uint8_t byte);
@@ -99,7 +101,7 @@ Parse_Rule rules[] = {
     [TOKEN_GREATER_EQUAL] = {NULL,      _binary, PREC_COMPARISON},
     [TOKEN_LESS]          = {NULL,      _binary, PREC_COMPARISON},
     [TOKEN_LESS_EQUAL]    = {NULL,      _binary, PREC_COMPARISON},
-    [TOKEN_IDENTIFIER]    = {NULL,      NULL,    PREC_NONE},
+    [TOKEN_IDENTIFIER]    = {_variable, NULL,    PREC_NONE},
     [TOKEN_STRING]        = {_string,   NULL,    PREC_NONE},
     [TOKEN_NUMBER]        = {_number,   NULL,    PREC_NONE},
     [TOKEN_AND]           = {NULL,      NULL,    PREC_NONE},
@@ -334,6 +336,15 @@ static void _literal(void) {
 
 static void _string(void) {
     _compiler_emit_constant(V_OBJ(string_copy(parser.previous.start + 1, parser.previous.length - 2)));
+}
+
+static void _variable(void) {
+    _variable_named(parser.previous);
+}
+
+static void _variable_named(Scanner_Token name) {
+    uint8_t arg = _constant_identifier(&name);
+    _compiler_emit_bytes(OP_GET_GLOBAL, arg);
 }
 
 static void _compiler_end(void) {

@@ -43,6 +43,9 @@ int instruction_disassemble(Chunk* chunk, int offset) {
         case OP_POP: {
             return instruction_simple("OP_POP", offset);
         }
+        case OP_GET_GLOBAL: {
+            return instruction_constant("OP_GET_GLOBAL", chunk, offset);
+        }
         case OP_DEFINE_GLOBAL: {
             return instruction_constant("OP_DEFINE_GLOBAL", chunk, offset);
         }

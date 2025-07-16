@@ -104,6 +104,16 @@ static Interpret_Result _vm_run(void) {
                 vm_stack_pop();
                 break;
             }
+            case OP_GET_GLOBAL: {
+                Obj_String* name = READ_STRING();
+                Value value;
+                if (!table_get(&vm.globals, name, &value)) {
+                    _vm_runtime_error("Undefined variable '%s'.", name->chars);
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                vm_stack_push(value);
+                break;
+            }
             case OP_DEFINE_GLOBAL: {
                 Obj_String* name = READ_STRING();
                 table_set(&vm.globals, name, _vm_stack_peek(0));
