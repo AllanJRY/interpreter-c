@@ -47,10 +47,14 @@ static void _synchronize_on_panic(void);
 
 static uint8_t _make_constant(Value value);
 static void    _parse_precedence(Precedence precedence);
+static uint8_t _variable_parse(const char* error_msg);
+static void    _variable_define(uint8_t global_var_idx);
+static uint8_t _constant_identifier(Scanner_Token* name);
 static bool    _match(Scanner_Token_Type type);
 static bool    _check(Scanner_Token_Type type);
 
 static void _declaration(void);
+static void _declaration_var(void);
 static void _statement(void);
 static void _statement_print(void);
 static void _statement_expression(void);
@@ -136,8 +140,39 @@ bool compiler_compile(const char* source, Chunk* chunk) {
 }
 
 static void _declaration(void) {
-    _statement();
+    if (_match(TOKEN_VAR)) {
+        _declaration_var();
+    } else {
+        _statement();
+    }
     if(parser.panic_mode) _synchronize_on_panic();
+}
+
+static void _declaration_var(void) {
+    uint8_t global_var_idx = _variable_parse("expect variable name.");
+
+    if (_match(TOKEN_EQUAL)) {
+        _expression();
+    } else {
+        _compiler_emit_byte(OP_NIL);
+    }
+
+    _parser_consume(TOKEN_SEMICOLON, "Expect ';' after variable declaration.");
+    _variable_define(global_var_idx);
+}
+
+static uint8_t _variable_parse(const char* error_msg) {
+    _parser_consume(TOKEN_IDENTIFIER, error_msg);
+    return _constant_identifier(&parser.previous);
+}
+
+static uint8_t _constant_identifier(Scanner_Token* name) {
+    return _make_constant(V_OBJ(string_copy(name->start, name->length)));
+}
+
+static void _variable_define(uint8_t global_var_idx) {
+    _compiler_emit_bytes(OP_DEFINE_GLOBAL, global_var_idx);
+
 }
 
 static void _statement(void) {

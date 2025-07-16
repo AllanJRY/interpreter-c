@@ -24,10 +24,12 @@ VM vm;
 void vm_init(void) {
     _vm_stack_reset();
     vm.objects = NULL;
+    table_init(&vm.globals);
     table_init(&vm.strings);
 }
 
 void vm_free(void) {
+    table_free(&vm.globals);
     table_free(&vm.strings);
     mem_free_objects();
 }
@@ -55,6 +57,7 @@ static Interpret_Result _vm_run(void) {
     //            and then, and only then, we increment the instruction pointer address.
     #define READ_BYTE() (*vm.ip++)  
     #define READ_CONSTANT() (vm.chunk->constants.values[READ_BYTE()])  
+    #define READ_STRING() (AS_STRING(READ_CONSTANT()))
     #define BINARY_OP(value_type, op)                                          \
     do {                                                                       \
         if (!IS_NUMBER(_vm_stack_peek(0)) || !IS_NUMBER(_vm_stack_peek(1))) { \
@@ -98,6 +101,12 @@ static Interpret_Result _vm_run(void) {
                 break;
             }
             case OP_POP: {
+                vm_stack_pop();
+                break;
+            }
+            case OP_DEFINE_GLOBAL: {
+                Obj_String* name = READ_STRING();
+                table_set(&vm.globals, name, _vm_stack_peek(0));
                 vm_stack_pop();
                 break;
             }
@@ -169,6 +178,7 @@ static Interpret_Result _vm_run(void) {
     }
 
     #undef READ_BYTE
+    #undef READ_STRING
     #undef READ_CONSTANT
     #undef BINARY_OP
 }
