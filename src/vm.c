@@ -60,7 +60,7 @@ static Interpret_Result _vm_run(void) {
     #define READ_STRING() (AS_STRING(READ_CONSTANT()))
     #define BINARY_OP(value_type, op)                                          \
     do {                                                                       \
-        if (!IS_NUMBER(_vm_stack_peek(0)) || !IS_NUMBER(_vm_stack_peek(1))) { \
+        if (!IS_NUMBER(_vm_stack_peek(0)) || !IS_NUMBER(_vm_stack_peek(1))) {  \
             _vm_runtime_error("Operands must be numbers.");                    \
             return INTERPRET_RUNTIME_ERROR;                                    \
         }                                                                      \
@@ -118,6 +118,15 @@ static Interpret_Result _vm_run(void) {
                 Obj_String* name = READ_STRING();
                 table_set(&vm.globals, name, _vm_stack_peek(0));
                 vm_stack_pop();
+                break;
+            }
+            case OP_SET_GLOBAL: {
+                Obj_String* name = READ_STRING();
+                if(table_set(&vm.globals, name, _vm_stack_peek(0))) {
+                    table_delete(&vm.globals, name);
+                    _vm_runtime_error("Undefined variable '%s'.", name->chars);
+                    return INTERPRET_RUNTIME_ERROR;
+                }
                 break;
             }
             case OP_EQUAL: {

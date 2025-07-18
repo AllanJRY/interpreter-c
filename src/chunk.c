@@ -20,7 +20,7 @@ void chunk_free(Chunk* chunk) {
 
 void chunk_write(Chunk* chunk, uint8_t byte, int line) {
     if (chunk->cap < chunk->len + 1) {
-        int old_cap = chunk->cap;
+        int old_cap  = chunk->cap;
         chunk->cap   = GROW_CAPACITY(old_cap);
         chunk->code  = GROW_ARRAY(uint8_t, chunk->code, old_cap, chunk->cap);
         chunk->lines = GROW_ARRAY(int, chunk->lines, old_cap, chunk->cap);

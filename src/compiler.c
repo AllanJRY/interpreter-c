@@ -30,7 +30,7 @@ typedef enum Precedence {
     PREC_PRIMARY,
 } Precedence;
 
-typedef void (*Parse_Fn)(void);
+typedef void (*Parse_Fn)(bool can_assign);
 
 typedef struct Parse_Rule {
     Parse_Fn   prefix;
@@ -49,7 +49,7 @@ static uint8_t _make_constant(Value value);
 static void    _parse_precedence(Precedence precedence);
 static uint8_t _variable_parse(const char* error_msg);
 static void    _variable_define(uint8_t global_var_idx);
-static void    _variable_named(Scanner_Token name);
+static void    _variable_named(Scanner_Token name, bool can_assign);
 static uint8_t _constant_identifier(Scanner_Token* name);
 static bool    _match(Scanner_Token_Type type);
 static bool    _check(Scanner_Token_Type type);
@@ -60,13 +60,13 @@ static void _statement(void);
 static void _statement_print(void);
 static void _statement_expression(void);
 static void _expression(void);
-static void _number(void);
-static void _grouping(void);
-static void _unary(void);
-static void _binary(void);
-static void _literal(void);
-static void _string(void);
-static void _variable(void);
+static void _number(bool can_assign);
+static void _grouping(bool can_assign);
+static void _unary(bool can_assign);
+static void _binary(bool can_assign);
+static void _literal(bool can_assign);
+static void _string(bool can_assign);
+static void _variable(bool can_assign);
 
 static void   _compiler_end(void);
 static void   _compiler_emit_byte(uint8_t byte);
@@ -210,12 +210,17 @@ static void _parse_precedence(Precedence precedence) {
         return;
     }
 
-    prefix_rule();
+    bool can_assign = precedence <= PREC_ASSIGNMENT;
+    prefix_rule(can_assign);
 
     while(precedence <= _parse_rule_get(parser.current.type)->precedence) {
         _parser_advance();
         Parse_Fn infix_rule = _parse_rule_get(parser.previous.type)->infix;
-        infix_rule();
+        infix_rule(can_assign);
+    }
+
+    if (can_assign && _match(TOKEN_EQUAL)) {
+        _error("Invalid assignment target.");
     }
 }
 
@@ -235,17 +240,17 @@ static Parse_Rule* _parse_rule_get(Scanner_Token_Type token_type) {
     return &rules[token_type];
 }
 
-static void _number(void) {
+static void _number(bool can_assign) {
     double value = strtod(parser.previous.start, NULL);
     _compiler_emit_constant(V_NUMBER(value));
 }
 
-static void _grouping(void) {
+static void _grouping(bool can_assign) {
     _expression();
     _parser_consume(TOKEN_RIGHT_PAREN, "Expect ')' after expression.");
 }
 
-static void _unary(void) {
+static void _unary(bool can_assign) {
     Scanner_Token_Type operator_type = parser.previous.type;
 
     // Compile the operand.
@@ -266,7 +271,7 @@ static void _unary(void) {
     }
 }
 
-static void _binary(void) {
+static void _binary(bool can_assign) {
     Scanner_Token_Type operator_type = parser.previous.type;
     Parse_Rule* rule = _parse_rule_get(operator_type);
     _parse_precedence((Precedence) (rule->precedence + 1));
@@ -316,7 +321,7 @@ static void _binary(void) {
     }
 }
 
-static void _literal(void) {
+static void _literal(bool can_assign) {
     switch(parser.previous.type) {
         case TOKEN_FALSE: {
             _compiler_emit_byte(OP_FALSE);
@@ -334,17 +339,22 @@ static void _literal(void) {
     }
 }
 
-static void _string(void) {
+static void _string(bool can_assign) {
     _compiler_emit_constant(V_OBJ(string_copy(parser.previous.start + 1, parser.previous.length - 2)));
 }
 
-static void _variable(void) {
-    _variable_named(parser.previous);
+static void _variable(bool can_assign) {
+    _variable_named(parser.previous, can_assign);
 }
 
-static void _variable_named(Scanner_Token name) {
+static void _variable_named(Scanner_Token name, bool can_assign) {
     uint8_t arg = _constant_identifier(&name);
-    _compiler_emit_bytes(OP_GET_GLOBAL, arg);
+    if (can_assign && _match(TOKEN_EQUAL)) {
+        _expression();
+        _compiler_emit_bytes(OP_SET_GLOBAL, arg);
+    } else {
+        _compiler_emit_bytes(OP_GET_GLOBAL, arg);
+    }
 }
 
 static void _compiler_end(void) {
