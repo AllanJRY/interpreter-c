@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "common.h"
 #include "compiler.h"
@@ -59,11 +60,13 @@ static void _synchronize_on_panic(void);
 static uint8_t _make_constant(Value value);
 static void    _parse_precedence(Precedence precedence);
 static uint8_t _variable_parse(const char* error_msg);
+static void    _variable_declare(void);
 static void    _variable_define(uint8_t global_var_idx);
 static void    _variable_named(Scanner_Token name, bool can_assign);
 static uint8_t _constant_identifier(Scanner_Token* name);
 static bool    _match(Scanner_Token_Type type);
 static bool    _check(Scanner_Token_Type type);
+static bool    _identifiers_equal(Scanner_Token* a, Scanner_Token* b);
 
 static void _declaration(void);
 static void _declaration_var(void);
@@ -90,6 +93,8 @@ static void   _compiler_emit_bytes(uint8_t byte1, uint8_t byte2);
 static void   _compiler_emit_return(void);
 static void   _compiler_emit_constant(Value value);
 static Chunk* _compiler_current_chunk(void);
+
+static void _local_add(Scanner_Token name);
 
 static void _parser_advance(void);
 static void _parser_consume(Scanner_Token_Type type, const char* msg);
@@ -184,6 +189,8 @@ static void _declaration_var(void) {
 
 static uint8_t _variable_parse(const char* error_msg) {
     _parser_consume(TOKEN_IDENTIFIER, error_msg);
+    _variable_declare();
+    if (current_compiler->scope_depth > 0) return 0;
     return _constant_identifier(&parser.previous);
 }
 
@@ -191,9 +198,46 @@ static uint8_t _constant_identifier(Scanner_Token* name) {
     return _make_constant(V_OBJ(string_copy(name->start, name->length)));
 }
 
-static void _variable_define(uint8_t global_var_idx) {
-    _compiler_emit_bytes(OP_DEFINE_GLOBAL, global_var_idx);
+static void _variable_declare(void) {
+    if (current_compiler->scope_depth == 0) return;
+    Scanner_Token* name = &parser.previous;
 
+    // Check for variable in the same scope.
+    for (int i = current_compiler->local_count - 1; i >= 0; i -= 1) {
+        Local* local = &current_compiler->locals[i];
+
+        if (local->depth != -1 && local->depth < current_compiler->scope_depth) {
+            break;
+        }
+
+        if (_identifiers_equal(name, &local->name)) {
+            _error("Already a variable with this name in this scope");
+        }
+    }
+
+    _local_add(*name);
+}
+
+static bool _identifiers_equal(Scanner_Token* a, Scanner_Token* b) {
+    if (a->length != b->length) return false;
+    return memcmp(a->start, b->start, b->length) == 0;
+}
+
+static void _local_add(Scanner_Token name) {
+    if (current_compiler->local_count == UINT8_COUNT) {
+        _error("Too many local variable in function.");
+        return;
+    }
+    Local* local = &current_compiler->locals[current_compiler->local_count++];
+    local->name  = name;
+    local->depth = current_compiler->scope_depth;
+}
+
+static void _variable_define(uint8_t global_var_idx) {
+    if (current_compiler->scope_depth > 0) {
+        return;
+    }
+    _compiler_emit_bytes(OP_DEFINE_GLOBAL, global_var_idx);
 }
 
 static void _statement(void) {
@@ -396,6 +440,10 @@ static void _scope_begin(void) {
 
 static void _scope_end(void) {
     current_compiler->scope_depth -= 1;
+    while(current_compiler->local_count > 0 && current_compiler->locals[current_compiler->local_count - 1].depth > current_compiler->scope_depth) {
+        _compiler_emit_byte(OP_POP);
+        current_compiler->local_count -= 1;
+    }
 }
 
 static void _compiler_init(Compiler* compiler) {
