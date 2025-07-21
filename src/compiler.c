@@ -38,6 +38,17 @@ typedef struct Parse_Rule {
     Precedence precedence;
 } Parse_Rule;
 
+typedef struct Local {
+    Scanner_Token name;
+    int           depth;
+} Local;
+
+typedef struct Compiler {
+    Local locals[UINT8_COUNT];
+    int   local_count;
+    int   scope_depth;
+} Compiler;
+
 static Parse_Rule* _parse_rule_get(Scanner_Token_Type token_type);
 
 static void _error(const char* msg);
@@ -67,7 +78,12 @@ static void _binary(bool can_assign);
 static void _literal(bool can_assign);
 static void _string(bool can_assign);
 static void _variable(bool can_assign);
+static void _block(void);
+static void _scope_begin(void);
+static void _scope_end(void);
 
+
+static void   _compiler_init(Compiler* compiler);
 static void   _compiler_end(void);
 static void   _compiler_emit_byte(uint8_t byte);
 static void   _compiler_emit_bytes(uint8_t byte1, uint8_t byte2);
@@ -79,6 +95,7 @@ static void _parser_advance(void);
 static void _parser_consume(Scanner_Token_Type type, const char* msg);
 
 Parser parser;
+Compiler* current_compiler = NULL;
 Chunk* compiling_chunk;
 
 Parse_Rule rules[] = {
@@ -126,6 +143,8 @@ Parse_Rule rules[] = {
 
 bool compiler_compile(const char* source, Chunk* chunk) {
     scanner_init(source);
+    Compiler compiler;
+    _compiler_init(&compiler);
 
     compiling_chunk   = chunk;
     parser.had_error  = false;
@@ -180,6 +199,10 @@ static void _variable_define(uint8_t global_var_idx) {
 static void _statement(void) {
     if(_match(TOKEN_PRINT)) {
         _statement_print();
+    } else if(_match(TOKEN_LEFT_BRACE)) {
+        _scope_begin();
+        _block();
+        _scope_end();
     } else {
         _statement_expression();
     }
@@ -355,6 +378,30 @@ static void _variable_named(Scanner_Token name, bool can_assign) {
     } else {
         _compiler_emit_bytes(OP_GET_GLOBAL, arg);
     }
+}
+
+
+static void _block(void) {
+    while(!_check(TOKEN_RIGHT_BRACE) && !_check(TOKEN_EOF)) {
+        _declaration();
+    }
+
+    _parser_consume(TOKEN_RIGHT_BRACE, "Expect '}' after block.");
+}
+
+static void _scope_end(void);
+static void _scope_begin(void) {
+    current_compiler->scope_depth += 1;
+}
+
+static void _scope_end(void) {
+    current_compiler->scope_depth -= 1;
+}
+
+static void _compiler_init(Compiler* compiler) {
+    compiler->local_count = 0;
+    compiler->scope_depth = 0;
+    current_compiler      = compiler;
 }
 
 static void _compiler_end(void) {
