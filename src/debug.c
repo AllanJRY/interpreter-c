@@ -3,6 +3,7 @@
 #include "debug.h"
 #include "value.h"
 
+static int _instruction_byte(const char* name, Chunk* chunk, int offset);
 
 static int instruction_simple(const char* name, int offset) {
     printf("%s\n", name);
@@ -14,6 +15,12 @@ static int instruction_constant(const char* name, Chunk* chunk, int offset) {
     printf("%-16s %4d '", name, constant_idx);
     value_print(chunk->constants.values[constant_idx]);
     printf("'\n");
+    return offset + 2;
+}
+
+static int _instruction_byte(const char* name, Chunk* chunk, int offset) {
+    uint8_t slot = chunk->code[offset + 1];
+    printf("%-16s %4d\n", name, slot);
     return offset + 2;
 }
 
@@ -43,11 +50,17 @@ int instruction_disassemble(Chunk* chunk, int offset) {
         case OP_POP: {
             return instruction_simple("OP_POP", offset);
         }
+        case OP_GET_LOCAL: {
+            return _instruction_byte("OP_GET_LOCAL", chunk, offset);
+        }
         case OP_GET_GLOBAL: {
             return instruction_constant("OP_GET_GLOBAL", chunk, offset);
         }
         case OP_DEFINE_GLOBAL: {
             return instruction_constant("OP_DEFINE_GLOBAL", chunk, offset);
+        }
+        case OP_SET_LOCAL: {
+            return _instruction_byte("OP_SET_LOCAL", chunk, offset);
         }
         case OP_SET_GLOBAL: {
             return instruction_constant("OP_SET_GLOBAL", chunk, offset);

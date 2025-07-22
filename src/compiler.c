@@ -95,6 +95,8 @@ static void   _compiler_emit_constant(Value value);
 static Chunk* _compiler_current_chunk(void);
 
 static void _local_add(Scanner_Token name);
+static int  _local_resolve(Compiler* compiler, Scanner_Token* name);
+static void _local_mark_initialized(void);
 
 static void _parser_advance(void);
 static void _parser_consume(Scanner_Token_Type type, const char* msg);
@@ -218,6 +220,14 @@ static void _variable_declare(void) {
     _local_add(*name);
 }
 
+static void _variable_define(uint8_t global_var_idx) {
+    if (current_compiler->scope_depth > 0) {
+        _local_mark_initialized();
+        return;
+    }
+    _compiler_emit_bytes(OP_DEFINE_GLOBAL, global_var_idx);
+}
+
 static bool _identifiers_equal(Scanner_Token* a, Scanner_Token* b) {
     if (a->length != b->length) return false;
     return memcmp(a->start, b->start, b->length) == 0;
@@ -230,14 +240,25 @@ static void _local_add(Scanner_Token name) {
     }
     Local* local = &current_compiler->locals[current_compiler->local_count++];
     local->name  = name;
-    local->depth = current_compiler->scope_depth;
+    local->depth = -1;
 }
 
-static void _variable_define(uint8_t global_var_idx) {
-    if (current_compiler->scope_depth > 0) {
-        return;
+static int _local_resolve(Compiler* compiler, Scanner_Token* name) {
+    for (int i = compiler->local_count - 1; i >= 0; i -= 1) {
+        Local* local = &compiler->locals[i];
+        if(_identifiers_equal(name, &local->name)) {
+            if (local->depth == -1) {
+                _error("Can't read local variable in its own initializer");
+            }
+            return i;
+        }
     }
-    _compiler_emit_bytes(OP_DEFINE_GLOBAL, global_var_idx);
+
+    return -1;
+}
+
+static void _local_mark_initialized(void) {
+    current_compiler->locals[current_compiler->local_count - 1].depth = current_compiler->scope_depth;
 }
 
 static void _statement(void) {
@@ -415,12 +436,23 @@ static void _variable(bool can_assign) {
 }
 
 static void _variable_named(Scanner_Token name, bool can_assign) {
-    uint8_t arg = _constant_identifier(&name);
+    uint8_t get_op, set_op;
+
+    int arg = _local_resolve(current_compiler, &name);
+    if (arg != -1) {
+        get_op = OP_GET_LOCAL;
+        set_op = OP_SET_LOCAL;
+    } else {
+        arg = _constant_identifier(&name);
+        get_op = OP_GET_GLOBAL;
+        set_op = OP_SET_GLOBAL;
+    }
+
     if (can_assign && _match(TOKEN_EQUAL)) {
         _expression();
-        _compiler_emit_bytes(OP_SET_GLOBAL, arg);
+        _compiler_emit_bytes(set_op, (uint8_t)arg);
     } else {
-        _compiler_emit_bytes(OP_GET_GLOBAL, arg);
+        _compiler_emit_bytes(get_op, (uint8_t)arg);
     }
 }
 

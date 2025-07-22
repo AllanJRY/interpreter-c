@@ -104,6 +104,11 @@ static Interpret_Result _vm_run(void) {
                 vm_stack_pop();
                 break;
             }
+            case OP_GET_LOCAL: {
+                uint8_t slot = READ_BYTE();
+                vm_stack_push(vm.stack[slot]);
+                break;
+            }
             case OP_GET_GLOBAL: {
                 Obj_String* name = READ_STRING();
                 Value value;
@@ -118,6 +123,11 @@ static Interpret_Result _vm_run(void) {
                 Obj_String* name = READ_STRING();
                 table_set(&vm.globals, name, _vm_stack_peek(0));
                 vm_stack_pop();
+                break;
+            }
+            case OP_SET_LOCAL: {
+                uint8_t slot = READ_BYTE();
+                vm.stack[slot] = _vm_stack_peek(0);
                 break;
             }
             case OP_SET_GLOBAL: {
