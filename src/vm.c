@@ -200,6 +200,11 @@ static Interpret_Result _vm_run(void) {
                 printf("\n");
                 break;
             }
+            case OP_JUMP: {
+                uint16_t offset = READ_SHORT();
+                vm.ip          += offset;
+                break;
+            }
             case OP_JUMP_IF_FALSE: {
                 uint16_t offset = READ_SHORT();
                 if(_is_falsey(_vm_stack_peek(0))) vm.ip += offset;

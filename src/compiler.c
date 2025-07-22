@@ -290,8 +290,13 @@ static void _statement_if(void) {
     _expression();
     _parser_consume(TOKEN_RIGHT_PAREN, "Expect ')' after condition.");
     int then_jump = _compiler_emit_jump(OP_JUMP_IF_FALSE);
+    _compiler_emit_byte(OP_POP);
     _statement();
+    int else_jump = _compiler_emit_jump(OP_JUMP);
     _jump_patch(then_jump);
+    _compiler_emit_byte(OP_POP);
+    if (_match(TOKEN_ELSE)) _statement();
+    _jump_patch(else_jump);
 }
 
 static void _statement_expression(void) {

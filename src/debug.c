@@ -4,6 +4,7 @@
 #include "value.h"
 
 static int _instruction_byte(const char* name, Chunk* chunk, int offset);
+static int _instruction_jump(const char* name, int sign, Chunk* chunk, int offset);
 
 static int instruction_simple(const char* name, int offset) {
     printf("%s\n", name);
@@ -22,6 +23,13 @@ static int _instruction_byte(const char* name, Chunk* chunk, int offset) {
     uint8_t slot = chunk->code[offset + 1];
     printf("%-16s %4d\n", name, slot);
     return offset + 2;
+}
+
+static int _instruction_jump(const char* name, int sign, Chunk* chunk, int offset){
+    uint16_t jump = (uint16_t) (chunk->code[offset + 1] << 8);
+    jump         |= chunk->code[offset + 2];
+    printf("%-16s %4d ->%d\n", name, offset, offset + 3 + sign * jump);
+    return offset + 3;
 }
 
 int instruction_disassemble(Chunk* chunk, int offset) {
@@ -94,6 +102,12 @@ int instruction_disassemble(Chunk* chunk, int offset) {
         }
         case OP_PRINT: {
             return instruction_simple("OP_PRINT", offset);
+        }
+        case OP_JUMP: {
+            return _instruction_jump("OP_JUMP", 1, chunk, offset);
+        }
+        case OP_JUMP_IF_FALSE: {
+            return _instruction_jump("OP_JUMP_IF_FALSE", 1, chunk, offset);
         }
         case OP_RETURN: {
             return instruction_simple("OP_RETURN", offset);
