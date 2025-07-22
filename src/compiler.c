@@ -72,6 +72,7 @@ static void _declaration(void);
 static void _declaration_var(void);
 static void _statement(void);
 static void _statement_print(void);
+static void _statement_if(void);
 static void _statement_expression(void);
 static void _expression(void);
 static void _number(bool can_assign);
@@ -92,11 +93,14 @@ static void   _compiler_emit_byte(uint8_t byte);
 static void   _compiler_emit_bytes(uint8_t byte1, uint8_t byte2);
 static void   _compiler_emit_return(void);
 static void   _compiler_emit_constant(Value value);
+static int    _compiler_emit_jump(uint8_t instruction);
 static Chunk* _compiler_current_chunk(void);
 
 static void _local_add(Scanner_Token name);
 static int  _local_resolve(Compiler* compiler, Scanner_Token* name);
 static void _local_mark_initialized(void);
+
+static void _jump_patch(int offset);
 
 static void _parser_advance(void);
 static void _parser_consume(Scanner_Token_Type type, const char* msg);
@@ -264,6 +268,8 @@ static void _local_mark_initialized(void) {
 static void _statement(void) {
     if(_match(TOKEN_PRINT)) {
         _statement_print();
+    } else if(_match(TOKEN_IF)) {
+        _statement_if();
     } else if(_match(TOKEN_LEFT_BRACE)) {
         _scope_begin();
         _block();
@@ -277,6 +283,15 @@ static void _statement_print(void) {
     _expression();
     _parser_consume(TOKEN_SEMICOLON, "Expect ';' after value.");
     _compiler_emit_byte(OP_PRINT);
+}
+
+static void _statement_if(void) {
+    _parser_consume(TOKEN_LEFT_PAREN, "Expect '(' after 'if'.");
+    _expression();
+    _parser_consume(TOKEN_RIGHT_PAREN, "Expect ')' after condition.");
+    int then_jump = _compiler_emit_jump(OP_JUMP_IF_FALSE);
+    _statement();
+    _jump_patch(then_jump);
 }
 
 static void _statement_expression(void) {
@@ -510,6 +525,13 @@ static void _compiler_emit_constant(Value value) {
     _compiler_emit_bytes(OP_CONSTANT, _make_constant(value));
 }
 
+static int _compiler_emit_jump(uint8_t instruction) {
+    _compiler_emit_byte(instruction);
+    _compiler_emit_byte(0xff);
+    _compiler_emit_byte(0xff);
+    return _compiler_current_chunk()->len - 2;
+}
+
 static uint8_t _make_constant(Value value) {
     int constant_idx = chunk_constants_add(_compiler_current_chunk(), value);
 
@@ -543,6 +565,19 @@ static void _parser_consume(Scanner_Token_Type type, const char* msg) {
     }
     
     _error_at_current(msg);
+}
+
+static void _jump_patch(int offset) {
+    // -2 to adjust for the bytecode for the jump offset itself.
+    int jump = _compiler_current_chunk()->len - offset - 2;
+
+    if (jump > UINT16_MAX) {
+        _error("too much code to jump over");
+    }
+
+    _compiler_current_chunk()->code[offset]     = (jump >> 8) & 0xff;
+    _compiler_current_chunk()->code[offset + 1] = jump & 0xff;
+
 }
 
 static void _error(const char* msg) {
