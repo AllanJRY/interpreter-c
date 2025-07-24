@@ -82,6 +82,8 @@ static void _binary(bool can_assign);
 static void _literal(bool can_assign);
 static void _string(bool can_assign);
 static void _variable(bool can_assign);
+static void _and(bool can_assign);
+static void _or(bool can_assign);
 static void _block(void);
 static void _scope_begin(void);
 static void _scope_end(void);
@@ -132,7 +134,7 @@ Parse_Rule rules[] = {
     [TOKEN_IDENTIFIER]    = {_variable, NULL,    PREC_NONE},
     [TOKEN_STRING]        = {_string,   NULL,    PREC_NONE},
     [TOKEN_NUMBER]        = {_number,   NULL,    PREC_NONE},
-    [TOKEN_AND]           = {NULL,      NULL,    PREC_NONE},
+    [TOKEN_AND]           = {NULL,      _and,    PREC_AND},
     [TOKEN_CLASS]         = {NULL,      NULL,    PREC_NONE},
     [TOKEN_ELSE]          = {NULL,      NULL,    PREC_NONE},
     [TOKEN_FALSE]         = {_literal,  NULL,    PREC_NONE},
@@ -140,7 +142,7 @@ Parse_Rule rules[] = {
     [TOKEN_FUN]           = {NULL,      NULL,    PREC_NONE},
     [TOKEN_IF]            = {NULL,      NULL,    PREC_NONE},
     [TOKEN_NIL]           = {_literal,  NULL,    PREC_NONE},
-    [TOKEN_OR]            = {NULL,      NULL,    PREC_NONE},
+    [TOKEN_OR]            = {NULL,      _or,     PREC_OR},
     [TOKEN_PRINT]         = {NULL,      NULL,    PREC_NONE},
     [TOKEN_RETURN]        = {NULL,      NULL,    PREC_NONE},
     [TOKEN_SUPER]         = {NULL,      NULL,    PREC_NONE},
@@ -476,6 +478,25 @@ static void _variable_named(Scanner_Token name, bool can_assign) {
     }
 }
 
+static void _and(bool can_assign) {
+    int end_jump = _compiler_emit_jump(OP_JUMP_IF_FALSE);
+
+    _compiler_emit_byte(OP_POP);
+    _parse_precedence(PREC_AND);
+
+    _jump_patch(end_jump);
+}
+
+static void _or(bool can_assign) {
+    int else_jump = _compiler_emit_jump(OP_JUMP_IF_FALSE);
+    int end_jump  = _compiler_emit_jump(OP_JUMP);
+
+    _jump_patch(else_jump);
+    _compiler_emit_byte(OP_POP);
+
+    _parse_precedence(PREC_OR);
+    _jump_patch(end_jump);
+}
 
 static void _block(void) {
     while(!_check(TOKEN_RIGHT_BRACE) && !_check(TOKEN_EOF)) {
