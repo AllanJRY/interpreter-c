@@ -73,6 +73,7 @@ static void _declaration_var(void);
 static void _statement(void);
 static void _statement_print(void);
 static void _statement_if(void);
+static void _statement_while(void);
 static void _statement_expression(void);
 static void _expression(void);
 static void _number(bool can_assign);
@@ -96,6 +97,7 @@ static void   _compiler_emit_bytes(uint8_t byte1, uint8_t byte2);
 static void   _compiler_emit_return(void);
 static void   _compiler_emit_constant(Value value);
 static int    _compiler_emit_jump(uint8_t instruction);
+static int    _compiler_emit_loop(int loop_start);
 static Chunk* _compiler_current_chunk(void);
 
 static void _local_add(Scanner_Token name);
@@ -272,6 +274,8 @@ static void _statement(void) {
         _statement_print();
     } else if(_match(TOKEN_IF)) {
         _statement_if();
+    } else if(_match(TOKEN_WHILE)) {
+        _statement_while();
     } else if(_match(TOKEN_LEFT_BRACE)) {
         _scope_begin();
         _block();
@@ -291,14 +295,34 @@ static void _statement_if(void) {
     _parser_consume(TOKEN_LEFT_PAREN, "Expect '(' after 'if'.");
     _expression();
     _parser_consume(TOKEN_RIGHT_PAREN, "Expect ')' after condition.");
+
     int then_jump = _compiler_emit_jump(OP_JUMP_IF_FALSE);
     _compiler_emit_byte(OP_POP);
+
     _statement();
     int else_jump = _compiler_emit_jump(OP_JUMP);
+
     _jump_patch(then_jump);
     _compiler_emit_byte(OP_POP);
+
     if (_match(TOKEN_ELSE)) _statement();
     _jump_patch(else_jump);
+}
+
+static void _statement_while(void) {
+    int loop_start = _compiler_current_chunk()->len;
+    _parser_consume(TOKEN_LEFT_PAREN, "Expect '(' after 'while'.");
+    _expression();
+    _parser_consume(TOKEN_RIGHT_PAREN, "Expect ')' after condition.");
+
+    int exit_jump = _compiler_emit_jump(OP_JUMP_IF_FALSE);
+    _compiler_emit_byte(OP_POP);
+
+    _statement();
+    _compiler_emit_loop(loop_start);
+
+    _jump_patch(exit_jump);
+    _compiler_emit_byte(OP_POP);
 }
 
 static void _statement_expression(void) {
@@ -556,6 +580,16 @@ static int _compiler_emit_jump(uint8_t instruction) {
     _compiler_emit_byte(0xff);
     _compiler_emit_byte(0xff);
     return _compiler_current_chunk()->len - 2;
+}
+
+static int    _compiler_emit_loop(int loop_start) {
+    _compiler_emit_byte(OP_LOOP);
+
+    int offset = _compiler_current_chunk()->len - loop_start + 2;
+    if (offset > UINT16_MAX) _error("Loop body too large.");
+
+    _compiler_emit_byte((offset >> 8) & 0xff);
+    _compiler_emit_byte(offset & 0xff);
 }
 
 static uint8_t _make_constant(Value value) {

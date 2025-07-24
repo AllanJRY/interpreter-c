@@ -109,6 +109,9 @@ int instruction_disassemble(Chunk* chunk, int offset) {
         case OP_JUMP_IF_FALSE: {
             return _instruction_jump("OP_JUMP_IF_FALSE", 1, chunk, offset);
         }
+        case OP_LOOP: {
+            return _instruction_jump("OP_LOOP", -1, chunk, offset);
+        }
         case OP_RETURN: {
             return instruction_simple("OP_RETURN", offset);
         }
