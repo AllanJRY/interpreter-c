@@ -72,6 +72,7 @@ static void _declaration(void);
 static void _declaration_var(void);
 static void _statement(void);
 static void _statement_print(void);
+static void _statement_for(void);
 static void _statement_if(void);
 static void _statement_while(void);
 static void _statement_expression(void);
@@ -272,6 +273,8 @@ static void _local_mark_initialized(void) {
 static void _statement(void) {
     if(_match(TOKEN_PRINT)) {
         _statement_print();
+    } else if(_match(TOKEN_FOR)) {
+        _statement_for();
     } else if(_match(TOKEN_IF)) {
         _statement_if();
     } else if(_match(TOKEN_WHILE)) {
@@ -289,6 +292,53 @@ static void _statement_print(void) {
     _expression();
     _parser_consume(TOKEN_SEMICOLON, "Expect ';' after value.");
     _compiler_emit_byte(OP_PRINT);
+}
+
+static void _statement_for(void) {
+    _scope_begin();
+
+    _parser_consume(TOKEN_LEFT_PAREN, "Expect '(' after 'if'.");
+    if (_match(TOKEN_SEMICOLON)) {
+        // No initializer.
+    } else if (_match(TOKEN_VAR)) {
+        _declaration_var();
+    } else {
+        _statement_expression();
+    }
+
+    int loop_start = _compiler_current_chunk()->len;
+    int exit_jump = -1;
+    if (!_match(TOKEN_SEMICOLON)) {
+        _expression();
+        _parser_consume(TOKEN_SEMICOLON, "Expect ';' after loop condition.");
+        // Jump out of the loop if the condition is false.
+        exit_jump = _compiler_emit_jump(OP_JUMP_IF_FALSE);
+        _compiler_emit_byte(OP_POP); // Condition.
+    }
+
+
+    if (!_match(TOKEN_RIGHT_PAREN)) {
+        int body_jump = _compiler_emit_jump(OP_JUMP);
+        int increment_start = _compiler_current_chunk()->len;
+        _expression();
+        _compiler_emit_byte(OP_POP);
+
+        _parser_consume(TOKEN_RIGHT_PAREN, "Expect ')' after for clauses.");
+
+        _compiler_emit_loop(loop_start);
+        loop_start = increment_start;
+        _jump_patch(body_jump);
+    }
+
+    _statement();
+
+    _compiler_emit_loop(loop_start);
+    if (exit_jump != -1) {
+        _jump_patch(exit_jump);
+        _compiler_emit_byte(OP_POP); // Condition.
+    }
+
+    _scope_end();
 }
 
 static void _statement_if(void) {
@@ -582,7 +632,7 @@ static int _compiler_emit_jump(uint8_t instruction) {
     return _compiler_current_chunk()->len - 2;
 }
 
-static int    _compiler_emit_loop(int loop_start) {
+static int _compiler_emit_loop(int loop_start) {
     _compiler_emit_byte(OP_LOOP);
 
     int offset = _compiler_current_chunk()->len - loop_start + 2;
