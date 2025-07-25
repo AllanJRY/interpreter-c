@@ -3,7 +3,7 @@
 #include "object.h"
 #include "vm.h"
 
-bool compiler_compile(const char* source, Chunk* chunk);
+Obj_Function* compiler_compile(const char* source);
 
 #define INTERP_COMPILER_H
 #endif

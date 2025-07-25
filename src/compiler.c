@@ -44,10 +44,17 @@ typedef struct Local {
     int           depth;
 } Local;
 
+typedef enum Function_Type {
+    TYPE_FUNCTION,
+    TYPE_SCRIPT,
+} Function_Type;
+
 typedef struct Compiler {
-    Local locals[UINT8_COUNT];
-    int   local_count;
-    int   scope_depth;
+    Obj_Function* function;
+    Function_Type type;
+    Local         locals[UINT8_COUNT];
+    int           local_count;
+    int           scope_depth;
 } Compiler;
 
 static Parse_Rule* _parse_rule_get(Scanner_Token_Type token_type);
@@ -91,15 +98,15 @@ static void _scope_begin(void);
 static void _scope_end(void);
 
 
-static void   _compiler_init(Compiler* compiler);
-static void   _compiler_end(void);
-static void   _compiler_emit_byte(uint8_t byte);
-static void   _compiler_emit_bytes(uint8_t byte1, uint8_t byte2);
-static void   _compiler_emit_return(void);
-static void   _compiler_emit_constant(Value value);
-static int    _compiler_emit_jump(uint8_t instruction);
-static int    _compiler_emit_loop(int loop_start);
-static Chunk* _compiler_current_chunk(void);
+static void          _compiler_init(Compiler* compiler, Function_Type type);
+static Obj_Function* _compiler_end(void);
+static void          _compiler_emit_byte(uint8_t byte);
+static void          _compiler_emit_bytes(uint8_t byte1, uint8_t byte2);
+static void          _compiler_emit_return(void);
+static void          _compiler_emit_constant(Value value);
+static int           _compiler_emit_jump(uint8_t instruction);
+static void          _compiler_emit_loop(int loop_start);
+static Chunk*        _compiler_current_chunk(void);
 
 static void _local_add(Scanner_Token name);
 static int  _local_resolve(Compiler* compiler, Scanner_Token* name);
@@ -157,12 +164,11 @@ Parse_Rule rules[] = {
     [TOKEN_EOF]           = {NULL,      NULL,    PREC_NONE},
 };
 
-bool compiler_compile(const char* source, Chunk* chunk) {
+Obj_Function* compiler_compile(const char* source) {
     scanner_init(source);
     Compiler compiler;
-    _compiler_init(&compiler);
+    _compiler_init(&compiler, TYPE_SCRIPT);
 
-    compiling_chunk   = chunk;
     parser.had_error  = false;
     parser.panic_mode = false;
 
@@ -171,9 +177,8 @@ bool compiler_compile(const char* source, Chunk* chunk) {
         _declaration();
     }
 
-    _compiler_end();
-
-    return !parser.had_error;
+    Obj_Function* function = _compiler_end();
+    return parser.had_error ? NULL : function;
 }
 
 static void _declaration(void) {
@@ -580,7 +585,6 @@ static void _block(void) {
     _parser_consume(TOKEN_RIGHT_BRACE, "Expect '}' after block.");
 }
 
-static void _scope_end(void);
 static void _scope_begin(void) {
     current_compiler->scope_depth += 1;
 }
@@ -593,19 +597,30 @@ static void _scope_end(void) {
     }
 }
 
-static void _compiler_init(Compiler* compiler) {
+static void _compiler_init(Compiler* compiler, Function_Type type) {
+    compiler->function    = NULL;
+    compiler->type        = type;
     compiler->local_count = 0;
     compiler->scope_depth = 0;
+    compiler->function    = function_new();
     current_compiler      = compiler;
+    Local* local          = &current_compiler->locals[current_compiler->local_count++];
+    local->depth          = 0;
+    local->name.start     = "";
+    local->name.length    = 0;
 }
 
-static void _compiler_end(void) {
+static Obj_Function* _compiler_end(void) {
     _compiler_emit_return();
+    Obj_Function* function = current_compiler->function;
+
     #ifdef DEBUG_PRINT_CODE
     if (!parser.had_error) {
-        chunk_disassemble(_compiler_current_chunk(), "code");
+        chunk_disassemble(_compiler_current_chunk(), function->name != NULL ? function->name->chars : "<script>");
     }
     #endif
+
+    return function;
 }
 
 static void _compiler_emit_byte(uint8_t byte) {
@@ -632,7 +647,7 @@ static int _compiler_emit_jump(uint8_t instruction) {
     return _compiler_current_chunk()->len - 2;
 }
 
-static int _compiler_emit_loop(int loop_start) {
+static void _compiler_emit_loop(int loop_start) {
     _compiler_emit_byte(OP_LOOP);
 
     int offset = _compiler_current_chunk()->len - loop_start + 2;
@@ -654,7 +669,7 @@ static uint8_t _make_constant(Value value) {
 }
 
 static Chunk* _compiler_current_chunk(void) {
-    return compiling_chunk;
+    return &current_compiler->function->chunk;
 }
 
 static void _parser_advance(void) {

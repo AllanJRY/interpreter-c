@@ -9,6 +9,8 @@
 
 #define _ALLOCATE_OBJ(type, obj_type) (type*) _object_allocate(sizeof(type), obj_type)
 
+static void _function_print(Obj_Function* function);
+
 static Obj* _object_allocate(size_t size, Obj_Type type) {
     Obj* object  = (Obj*) reallocate(NULL, 0, size);
     object->type = type;
@@ -61,11 +63,31 @@ Obj_String* string_take(char* chars, int length) {
     return _string_allocate(chars, length, hash);
 }
 
+Obj_Function* function_new(void) {
+    Obj_Function* function = _ALLOCATE_OBJ(Obj_Function, OBJ_FUNCTION);
+    function->arity        = 0;
+    function->name         = NULL;
+    chunk_init(&function->chunk);
+    return function;
+}
+
 void object_print(Value value) {
     switch(OBJ_TYPE(value)) {
+        case OBJ_FUNCTION: {
+            _function_print(AS_FUNCTION(value));
+            break;
+        }
         case OBJ_STRING: {
             printf("%s", AS_CSTRING(value));
             break;
         }
     }
+}
+
+static void _function_print(Obj_Function* function) {
+    if (function->name == NULL) {
+        printf("<script>");
+        return;
+    }
+    printf("<fn %s>", function->name->chars);
 }

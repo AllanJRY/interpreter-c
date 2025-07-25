@@ -30,6 +30,12 @@ void mem_free_objects(void) {
 
 static void _free_object(Obj* object) {
     switch(object->type) {
+        case OBJ_FUNCTION: {
+            Obj_Function* function = (Obj_Function*) object;
+            chunk_free(&function->chunk);
+            FREE(Obj_Function, object);
+            break;
+        }
         case OBJ_STRING: {
             Obj_String* string = (Obj_String*) object;
             FREE_ARRAY(char, string->chars, string->length + 1);
