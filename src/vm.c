@@ -19,6 +19,9 @@ static Interpret_Result _vm_run(void);
 static Value _vm_stack_peek(int distance);
 static void  _vm_stack_reset(void);
 
+static bool _call_value(Value callee, int arg_count);
+static bool _call(Obj_Function* function, int arg_count);
+
 VM vm;
 
 void vm_init(void) {
@@ -39,10 +42,7 @@ Interpret_Result vm_interpret(const char* source) {
     if(function == NULL) return INTERPRET_COMPILE_ERROR;
 
     vm_stack_push(V_OBJ(function));
-    Call_Frame* frame = &vm.frames[vm.frame_count++];
-    frame->function   = function;
-    frame->ip         = function->chunk.code;
-    frame->slots      = vm.stack;
+    _call(function, 0);
 
     return _vm_run();
 }
@@ -212,6 +212,14 @@ static Interpret_Result _vm_run(void) {
                 frame->ip       -= offset;
                 break;
             }
+            case OP_CALL: {
+                int arg_count = READ_BYTE();
+                if (!_call_value(_vm_stack_peek(arg_count), arg_count)) {
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                frame = &vm.frames[vm.frame_count - 1];
+                break;
+            }
             case OP_RETURN: {
                 // Exit interpreter
                 return INTERPRET_OK;
@@ -244,6 +252,36 @@ static void _concatenate(void) {
     vm_stack_push(V_OBJ(result));
 }
 
+static bool _call_value(Value callee, int arg_count) {
+    if (IS_OBJ(callee)) {
+        switch(OBJ_TYPE(callee)) {
+            case OBJ_FUNCTION: return _call(AS_FUNCTION(callee), arg_count);
+            default: break; // Non-callable object type.
+        }
+    }
+
+    _vm_runtime_error("Can only call functions and classes");
+    return false;
+}
+
+static bool _call(Obj_Function* function, int arg_count) {
+    if (arg_count != function->arity) {
+        _vm_runtime_error("Expected %d arguments but got %d.", function->arity, arg_count);
+        return false;
+    }
+
+    if (vm.frame_count == FRAMES_MAX) {
+        _vm_runtime_error("Stack overflow.");
+        return false;
+    }
+
+    Call_Frame* frame = &vm.frames[vm.frame_count++];
+    frame->function   = function;
+    frame->ip         = function->chunk.code;
+    frame->slots      = vm.stack_top - arg_count - 1;
+    return true;
+}
+
 void vm_stack_push(Value value) {
     *vm.stack_top = value;
     vm.stack_top += 1;
@@ -269,9 +307,19 @@ static void _vm_runtime_error(const char* format, ...) {
     va_end(args);
     fputs("\n", stderr);
 
-    Call_Frame* frame = &vm.frames[vm.frame_count - 1];
-    size_t instruction = frame->ip - frame->function->chunk.code - 1;
-    int line = frame->function->chunk.lines[instruction];
-    fprintf(stderr, "[line %d] in script\n", line);
+
+    for (int i = vm.frame_count - 1; i >= 0; i -= 1) {
+        Call_Frame* frame = &vm.frames[i];
+        Obj_Function* function = frame->function;
+        size_t instruction = frame->ip - function->chunk.code - 1;
+
+        fprintf(stderr, "[line %d] in ", function->chunk.lines[instruction]);
+        if (function->name == NULL) {
+            fprintf(stderr, "script\n");
+        } else {
+            fprintf(stderr, "%s()\n", function->name->chars);
+        }
+    }
+
     _vm_stack_reset();
 }

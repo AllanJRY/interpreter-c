@@ -13,4 +13,4 @@ fun test() {
     print "Test func";
 }
 
-print test;
+test();

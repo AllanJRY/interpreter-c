@@ -76,6 +76,7 @@ static uint8_t _constant_identifier(Scanner_Token* name);
 static bool    _match(Scanner_Token_Type type);
 static bool    _check(Scanner_Token_Type type);
 static bool    _identifiers_equal(Scanner_Token* a, Scanner_Token* b);
+static uint8_t _argument_list(void);
 
 static void _declaration(void);
 static void _declaration_var(void);
@@ -100,7 +101,7 @@ static void _block(void);
 static void _scope_begin(void);
 static void _scope_end(void);
 static void _function(Function_Type type);
-
+static void _function_call(bool can_assign);
 
 static void          _compiler_init(Compiler* compiler, Function_Type type);
 static Obj_Function* _compiler_end(void);
@@ -125,46 +126,46 @@ Compiler* current_compiler = NULL;
 Chunk* compiling_chunk;
 
 Parse_Rule rules[] = {
-    [TOKEN_LEFT_PAREN]    = {_grouping, NULL,    PREC_NONE},
-    [TOKEN_RIGHT_PAREN]   = {NULL,      NULL,    PREC_NONE},
-    [TOKEN_LEFT_BRACE]    = {NULL,      NULL,    PREC_NONE},
-    [TOKEN_RIGHT_BRACE]   = {NULL,      NULL,    PREC_NONE},
-    [TOKEN_COMMA]         = {NULL,      NULL,    PREC_NONE},
-    [TOKEN_DOT]           = {NULL,      NULL,    PREC_NONE},
-    [TOKEN_MINUS]         = {_unary,    _binary, PREC_TERM},
-    [TOKEN_PLUS]          = {NULL,      _binary, PREC_TERM},
-    [TOKEN_SEMICOLON]     = {NULL,      NULL,    PREC_NONE},
-    [TOKEN_SLASH]         = {NULL,      _binary, PREC_FACTOR},
-    [TOKEN_STAR]          = {NULL,      _binary, PREC_FACTOR},
-    [TOKEN_BANG]          = {_unary,    NULL,    PREC_NONE},
-    [TOKEN_BANG_EQUAL]    = {NULL,      _binary, PREC_EQUALITY},
-    [TOKEN_EQUAL]         = {NULL,      NULL,    PREC_NONE},
-    [TOKEN_EQUAL_EQUAL]   = {NULL,      _binary, PREC_EQUALITY},
-    [TOKEN_GREATER]       = {NULL,      _binary, PREC_COMPARISON},
-    [TOKEN_GREATER_EQUAL] = {NULL,      _binary, PREC_COMPARISON},
-    [TOKEN_LESS]          = {NULL,      _binary, PREC_COMPARISON},
-    [TOKEN_LESS_EQUAL]    = {NULL,      _binary, PREC_COMPARISON},
-    [TOKEN_IDENTIFIER]    = {_variable, NULL,    PREC_NONE},
-    [TOKEN_STRING]        = {_string,   NULL,    PREC_NONE},
-    [TOKEN_NUMBER]        = {_number,   NULL,    PREC_NONE},
-    [TOKEN_AND]           = {NULL,      _and,    PREC_AND},
-    [TOKEN_CLASS]         = {NULL,      NULL,    PREC_NONE},
-    [TOKEN_ELSE]          = {NULL,      NULL,    PREC_NONE},
-    [TOKEN_FALSE]         = {_literal,  NULL,    PREC_NONE},
-    [TOKEN_FOR]           = {NULL,      NULL,    PREC_NONE},
-    [TOKEN_FUN]           = {NULL,      NULL,    PREC_NONE},
-    [TOKEN_IF]            = {NULL,      NULL,    PREC_NONE},
-    [TOKEN_NIL]           = {_literal,  NULL,    PREC_NONE},
-    [TOKEN_OR]            = {NULL,      _or,     PREC_OR},
-    [TOKEN_PRINT]         = {NULL,      NULL,    PREC_NONE},
-    [TOKEN_RETURN]        = {NULL,      NULL,    PREC_NONE},
-    [TOKEN_SUPER]         = {NULL,      NULL,    PREC_NONE},
-    [TOKEN_THIS]          = {NULL,      NULL,    PREC_NONE},
-    [TOKEN_TRUE]          = {_literal,  NULL,    PREC_NONE},
-    [TOKEN_VAR]           = {NULL,      NULL,    PREC_NONE},
-    [TOKEN_WHILE]         = {NULL,      NULL,    PREC_NONE},
-    [TOKEN_ERROR]         = {NULL,      NULL,    PREC_NONE},
-    [TOKEN_EOF]           = {NULL,      NULL,    PREC_NONE},
+    [TOKEN_LEFT_PAREN]    = {_grouping, _function_call, PREC_CALL},
+    [TOKEN_RIGHT_PAREN]   = {NULL,      NULL,           PREC_NONE},
+    [TOKEN_LEFT_BRACE]    = {NULL,      NULL,           PREC_NONE},
+    [TOKEN_RIGHT_BRACE]   = {NULL,      NULL,           PREC_NONE},
+    [TOKEN_COMMA]         = {NULL,      NULL,           PREC_NONE},
+    [TOKEN_DOT]           = {NULL,      NULL,           PREC_NONE},
+    [TOKEN_MINUS]         = {_unary,    _binary,        PREC_TERM},
+    [TOKEN_PLUS]          = {NULL,      _binary,        PREC_TERM},
+    [TOKEN_SEMICOLON]     = {NULL,      NULL,           PREC_NONE},
+    [TOKEN_SLASH]         = {NULL,      _binary,        PREC_FACTOR},
+    [TOKEN_STAR]          = {NULL,      _binary,        PREC_FACTOR},
+    [TOKEN_BANG]          = {_unary,    NULL,           PREC_NONE},
+    [TOKEN_BANG_EQUAL]    = {NULL,      _binary,        PREC_EQUALITY},
+    [TOKEN_EQUAL]         = {NULL,      NULL,           PREC_NONE},
+    [TOKEN_EQUAL_EQUAL]   = {NULL,      _binary,        PREC_EQUALITY},
+    [TOKEN_GREATER]       = {NULL,      _binary,        PREC_COMPARISON},
+    [TOKEN_GREATER_EQUAL] = {NULL,      _binary,        PREC_COMPARISON},
+    [TOKEN_LESS]          = {NULL,      _binary,        PREC_COMPARISON},
+    [TOKEN_LESS_EQUAL]    = {NULL,      _binary,        PREC_COMPARISON},
+    [TOKEN_IDENTIFIER]    = {_variable, NULL,           PREC_NONE},
+    [TOKEN_STRING]        = {_string,   NULL,           PREC_NONE},
+    [TOKEN_NUMBER]        = {_number,   NULL,           PREC_NONE},
+    [TOKEN_AND]           = {NULL,      _and,           PREC_AND},
+    [TOKEN_CLASS]         = {NULL,      NULL,           PREC_NONE},
+    [TOKEN_ELSE]          = {NULL,      NULL,           PREC_NONE},
+    [TOKEN_FALSE]         = {_literal,  NULL,           PREC_NONE},
+    [TOKEN_FOR]           = {NULL,      NULL,           PREC_NONE},
+    [TOKEN_FUN]           = {NULL,      NULL,           PREC_NONE},
+    [TOKEN_IF]            = {NULL,      NULL,           PREC_NONE},
+    [TOKEN_NIL]           = {_literal,  NULL,           PREC_NONE},
+    [TOKEN_OR]            = {NULL,      _or,            PREC_OR},
+    [TOKEN_PRINT]         = {NULL,      NULL,           PREC_NONE},
+    [TOKEN_RETURN]        = {NULL,      NULL,           PREC_NONE},
+    [TOKEN_SUPER]         = {NULL,      NULL,           PREC_NONE},
+    [TOKEN_THIS]          = {NULL,      NULL,           PREC_NONE},
+    [TOKEN_TRUE]          = {_literal,  NULL,           PREC_NONE},
+    [TOKEN_VAR]           = {NULL,      NULL,           PREC_NONE},
+    [TOKEN_WHILE]         = {NULL,      NULL,           PREC_NONE},
+    [TOKEN_ERROR]         = {NULL,      NULL,           PREC_NONE},
+    [TOKEN_EOF]           = {NULL,      NULL,           PREC_NONE},
 };
 
 Obj_Function* compiler_compile(const char* source) {
@@ -634,6 +635,27 @@ static void _function(Function_Type type) {
     Obj_Function* function = _compiler_end(); // No _scope_end call needed because of this call.
 
     _compiler_emit_bytes(OP_CONSTANT, _make_constant(V_OBJ(function)));
+}
+
+static void _function_call(bool can_assign) {
+    uint8_t arg_count = _argument_list();
+    _compiler_emit_bytes(OP_CALL, arg_count);
+}
+
+static uint8_t _argument_list(void) {
+    uint8_t arg_count = 0;
+    if (!_check(TOKEN_RIGHT_PAREN)) {
+        do {
+            _expression();
+            if (arg_count == 255) {
+                _error("Can't have more than 255 arguments.");
+            }
+            arg_count += 1;
+        } while(_match(TOKEN_COMMA));
+    }
+
+    _parser_consume(TOKEN_RIGHT_PAREN, "Expect ')' after arguments.");
+    return arg_count;
 }
 
 static void _compiler_init(Compiler* compiler, Function_Type type) {

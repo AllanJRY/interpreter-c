@@ -115,6 +115,9 @@ int instruction_disassemble(Chunk* chunk, int offset) {
         case OP_RETURN: {
             return instruction_simple("OP_RETURN", offset);
         }
+        case OP_CALL: {
+            return _instruction_byte("OP_CALL", chunk, offset);
+        }
         default: {
             printf("Unknown opcode %d\n", instruction);
             return offset + 1;
