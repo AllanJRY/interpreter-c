@@ -50,11 +50,12 @@ typedef enum Function_Type {
 } Function_Type;
 
 typedef struct Compiler {
-    Obj_Function* function;
-    Function_Type type;
-    Local         locals[UINT8_COUNT];
-    int           local_count;
-    int           scope_depth;
+    struct Compiler* enclosing;
+    Obj_Function*    function;
+    Function_Type    type;
+    Local            locals[UINT8_COUNT];
+    int              local_count;
+    int              scope_depth;
 } Compiler;
 
 static Parse_Rule* _parse_rule_get(Scanner_Token_Type token_type);
@@ -70,6 +71,7 @@ static uint8_t _variable_parse(const char* error_msg);
 static void    _variable_declare(void);
 static void    _variable_define(uint8_t global_var_idx);
 static void    _variable_named(Scanner_Token name, bool can_assign);
+static void    _variable_mark_initialized(void);
 static uint8_t _constant_identifier(Scanner_Token* name);
 static bool    _match(Scanner_Token_Type type);
 static bool    _check(Scanner_Token_Type type);
@@ -77,6 +79,7 @@ static bool    _identifiers_equal(Scanner_Token* a, Scanner_Token* b);
 
 static void _declaration(void);
 static void _declaration_var(void);
+static void _declaration_fun(void);
 static void _statement(void);
 static void _statement_print(void);
 static void _statement_for(void);
@@ -96,6 +99,7 @@ static void _or(bool can_assign);
 static void _block(void);
 static void _scope_begin(void);
 static void _scope_end(void);
+static void _function(Function_Type type);
 
 
 static void          _compiler_init(Compiler* compiler, Function_Type type);
@@ -110,7 +114,6 @@ static Chunk*        _compiler_current_chunk(void);
 
 static void _local_add(Scanner_Token name);
 static int  _local_resolve(Compiler* compiler, Scanner_Token* name);
-static void _local_mark_initialized(void);
 
 static void _jump_patch(int offset);
 
@@ -182,7 +185,9 @@ Obj_Function* compiler_compile(const char* source) {
 }
 
 static void _declaration(void) {
-    if (_match(TOKEN_VAR)) {
+    if (_match(TOKEN_FUN)) {
+        _declaration_fun();
+    } else if (_match(TOKEN_VAR)) {
         _declaration_var();
     } else {
         _statement();
@@ -201,6 +206,13 @@ static void _declaration_var(void) {
 
     _parser_consume(TOKEN_SEMICOLON, "Expect ';' after variable declaration.");
     _variable_define(global_var_idx);
+}
+
+static void _declaration_fun(void) {
+    uint8_t global = _variable_parse("Expect function name.");
+    _variable_mark_initialized();
+    _function(TYPE_FUNCTION);
+    _variable_define(global);
 }
 
 static uint8_t _variable_parse(const char* error_msg) {
@@ -236,7 +248,7 @@ static void _variable_declare(void) {
 
 static void _variable_define(uint8_t global_var_idx) {
     if (current_compiler->scope_depth > 0) {
-        _local_mark_initialized();
+        _variable_mark_initialized();
         return;
     }
     _compiler_emit_bytes(OP_DEFINE_GLOBAL, global_var_idx);
@@ -271,7 +283,8 @@ static int _local_resolve(Compiler* compiler, Scanner_Token* name) {
     return -1;
 }
 
-static void _local_mark_initialized(void) {
+static void _variable_mark_initialized(void) {
+    if (current_compiler->scope_depth == 0) return;
     current_compiler->locals[current_compiler->local_count - 1].depth = current_compiler->scope_depth;
 }
 
@@ -597,13 +610,43 @@ static void _scope_end(void) {
     }
 }
 
+static void _function(Function_Type type) {
+    Compiler compiler;
+    _compiler_init(&compiler, type);
+    _scope_begin();
+
+    _parser_consume(TOKEN_LEFT_PAREN, "Expect '(' after function name.");
+    if (!_check(TOKEN_RIGHT_PAREN)) {
+        do {
+            current_compiler->function->arity += 1;
+            if (current_compiler->function->arity > 255) {
+                _error_at_current("Can't have more than 255 parameters");
+            }
+            uint8_t constant_idx = _variable_parse("Expect parameter name");
+            _variable_define(constant_idx);
+        } while(_match(TOKEN_COMMA));
+    }
+    _parser_consume(TOKEN_RIGHT_PAREN, "Expect ')' after parameters.");
+
+    _parser_consume(TOKEN_LEFT_BRACE, "Expect '{' before function body.");
+
+    _block();
+    Obj_Function* function = _compiler_end(); // No _scope_end call needed because of this call.
+
+    _compiler_emit_bytes(OP_CONSTANT, _make_constant(V_OBJ(function)));
+}
+
 static void _compiler_init(Compiler* compiler, Function_Type type) {
+    compiler->enclosing   = current_compiler;
     compiler->function    = NULL;
     compiler->type        = type;
     compiler->local_count = 0;
     compiler->scope_depth = 0;
     compiler->function    = function_new();
     current_compiler      = compiler;
+    if (type != TYPE_SCRIPT) {
+        current_compiler->function->name = string_copy(parser.previous.start, parser.previous.length);
+    }
     Local* local          = &current_compiler->locals[current_compiler->local_count++];
     local->depth          = 0;
     local->name.start     = "";
@@ -620,6 +663,7 @@ static Obj_Function* _compiler_end(void) {
     }
     #endif
 
+    current_compiler = current_compiler->enclosing;
     return function;
 }
 
