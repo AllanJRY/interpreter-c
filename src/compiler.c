@@ -85,6 +85,7 @@ static void _statement(void);
 static void _statement_print(void);
 static void _statement_for(void);
 static void _statement_if(void);
+static void _statement_return(void);
 static void _statement_while(void);
 static void _statement_expression(void);
 static void _expression(void);
@@ -296,6 +297,8 @@ static void _statement(void) {
         _statement_for();
     } else if(_match(TOKEN_IF)) {
         _statement_if();
+    } else if(_match(TOKEN_RETURN)) {
+        _statement_return();
     } else if(_match(TOKEN_WHILE)) {
         _statement_while();
     } else if(_match(TOKEN_LEFT_BRACE)) {
@@ -376,6 +379,20 @@ static void _statement_if(void) {
 
     if (_match(TOKEN_ELSE)) _statement();
     _jump_patch(else_jump);
+}
+
+static void _statement_return(void) {
+    if (current_compiler->type == TYPE_SCRIPT) {
+        _error("Can't return from top-level code.");
+    }
+
+    if(_match(TOKEN_SEMICOLON)) {
+        _compiler_emit_return();
+    } else {
+        _expression();
+        _parser_consume(TOKEN_SEMICOLON, "Expect ';' after return value.");
+        _compiler_emit_byte(OP_RETURN);
+    }
 }
 
 static void _statement_while(void) {
@@ -699,6 +716,7 @@ static void _compiler_emit_bytes(uint8_t byte1, uint8_t byte2) {
 }
 
 static void _compiler_emit_return(void) {
+    _compiler_emit_byte(OP_NIL);
     _compiler_emit_byte(OP_RETURN);
 }
 

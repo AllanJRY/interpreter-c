@@ -9,8 +9,8 @@
 //    print i;
 //}
 
-fun test() {
-    print "Test func";
+fun sum(a, b, c) {
+    return a + b + c;
 }
 
-test();
+print sum(1, 2, 3);

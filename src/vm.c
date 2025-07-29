@@ -221,8 +221,18 @@ static Interpret_Result _vm_run(void) {
                 break;
             }
             case OP_RETURN: {
-                // Exit interpreter
-                return INTERPRET_OK;
+                Value result    = vm_stack_pop();
+                vm.frame_count -= 1;
+
+                if (vm.frame_count == 0) {
+                    vm_stack_pop();
+                    return INTERPRET_OK;
+                }
+
+                vm.stack_top = frame->slots;
+                vm_stack_push(result);
+                frame = &vm.frames[vm.frame_count - 1];
+                break;
             }
         }
     }
