@@ -461,16 +461,19 @@ static Parse_Rule* _parse_rule_get(Scanner_Token_Type token_type) {
 }
 
 static void _number(bool can_assign) {
+    (void) can_assign;
     double value = strtod(parser.previous.start, NULL);
     _compiler_emit_constant(V_NUMBER(value));
 }
 
 static void _grouping(bool can_assign) {
+    (void) can_assign;
     _expression();
     _parser_consume(TOKEN_RIGHT_PAREN, "Expect ')' after expression.");
 }
 
 static void _unary(bool can_assign) {
+    (void) can_assign;
     Scanner_Token_Type operator_type = parser.previous.type;
 
     // Compile the operand.
@@ -492,6 +495,7 @@ static void _unary(bool can_assign) {
 }
 
 static void _binary(bool can_assign) {
+    (void) can_assign;
     Scanner_Token_Type operator_type = parser.previous.type;
     Parse_Rule* rule = _parse_rule_get(operator_type);
     _parse_precedence((Precedence) (rule->precedence + 1));
@@ -542,6 +546,7 @@ static void _binary(bool can_assign) {
 }
 
 static void _literal(bool can_assign) {
+    (void) can_assign;
     switch(parser.previous.type) {
         case TOKEN_FALSE: {
             _compiler_emit_byte(OP_FALSE);
@@ -560,6 +565,7 @@ static void _literal(bool can_assign) {
 }
 
 static void _string(bool can_assign) {
+    (void) can_assign;
     _compiler_emit_constant(V_OBJ(string_copy(parser.previous.start + 1, parser.previous.length - 2)));
 }
 
@@ -589,6 +595,7 @@ static void _variable_named(Scanner_Token name, bool can_assign) {
 }
 
 static void _and(bool can_assign) {
+    (void) can_assign;
     int end_jump = _compiler_emit_jump(OP_JUMP_IF_FALSE);
 
     _compiler_emit_byte(OP_POP);
@@ -598,6 +605,7 @@ static void _and(bool can_assign) {
 }
 
 static void _or(bool can_assign) {
+    (void) can_assign;
     int else_jump = _compiler_emit_jump(OP_JUMP_IF_FALSE);
     int end_jump  = _compiler_emit_jump(OP_JUMP);
 
@@ -655,6 +663,7 @@ static void _function(Function_Type type) {
 }
 
 static void _function_call(bool can_assign) {
+    (void) can_assign;
     uint8_t arg_count = _argument_list();
     _compiler_emit_bytes(OP_CALL, arg_count);
 }

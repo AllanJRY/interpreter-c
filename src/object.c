@@ -71,10 +71,20 @@ Obj_Function* function_new(void) {
     return function;
 }
 
+Obj_Native* native_new(Native_Fn function) {
+    Obj_Native* native = _ALLOCATE_OBJ(Obj_Native, OBJ_NATIVE);
+    native->function   = function;
+    return native;
+}
+
 void object_print(Value value) {
     switch(OBJ_TYPE(value)) {
         case OBJ_FUNCTION: {
             _function_print(AS_FUNCTION(value));
+            break;
+        }
+        case OBJ_NATIVE: {
+            printf("<native fn>");
             break;
         }
         case OBJ_STRING: {

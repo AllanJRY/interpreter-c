@@ -1,6 +1,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 #include "common.h"
 #include "compiler.h"
@@ -22,6 +23,9 @@ static void  _vm_stack_reset(void);
 static bool _call_value(Value callee, int arg_count);
 static bool _call(Obj_Function* function, int arg_count);
 
+static Value _native_clock(int arg_count, Value* args);
+static void  _native_define(const char* name, Native_Fn function);
+
 VM vm;
 
 void vm_init(void) {
@@ -29,6 +33,7 @@ void vm_init(void) {
     vm.objects = NULL;
     table_init(&vm.globals);
     table_init(&vm.strings);
+    _native_define("clock", _native_clock);
 }
 
 void vm_free(void) {
@@ -266,6 +271,13 @@ static bool _call_value(Value callee, int arg_count) {
     if (IS_OBJ(callee)) {
         switch(OBJ_TYPE(callee)) {
             case OBJ_FUNCTION: return _call(AS_FUNCTION(callee), arg_count);
+            case OBJ_NATIVE: {
+                Native_Fn native  = AS_NATIVE(callee);
+                Value result      = native(arg_count, vm.stack_top - arg_count);
+                vm.stack_top     -= arg_count + 1;
+                vm_stack_push(result);
+                return true;
+            };
             default: break; // Non-callable object type.
         }
     }
@@ -308,6 +320,20 @@ static Value _vm_stack_peek(int distance) {
 
 static void _vm_stack_reset(void) {
     vm.stack_top = vm.stack;
+}
+
+static void _native_define(const char* name, Native_Fn function) {
+    vm_stack_push(V_OBJ(string_copy(name, (int) strlen(name))));
+    vm_stack_push(V_OBJ(native_new(function)));
+    table_set(&vm.globals, AS_STRING(vm.stack[0]), vm.stack[1]);
+    vm_stack_pop();
+    vm_stack_pop();
+}
+
+static Value _native_clock(int arg_count, Value* args) {
+    (void) arg_count;
+    (void) args;
+    return V_NUMBER((double)clock() / CLOCKS_PER_SEC);
 }
 
 static void _vm_runtime_error(const char* format, ...) {

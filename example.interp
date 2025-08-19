@@ -9,8 +9,20 @@
 //    print i;
 //}
 
-fun sum(a, b, c) {
-    return a + b + c;
-}
+//fun sum(a, b, c) {
+//    return a + b + c;
+//}
 
-print sum(1, 2, 3);
+//print sum(1, 2, 3);
+
+// print clock();
+
+//fun fib(n) {
+//    if (n < 2) return n;
+//    return fib(n - 2) + fib(n - 1);
+//}
+
+//var start = clock();
+//print fib(35);
+//print clock() - start;
+
