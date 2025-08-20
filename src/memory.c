@@ -30,6 +30,10 @@ void mem_free_objects(void) {
 
 static void _free_object(Obj* object) {
     switch(object->type) {
+        case OBJ_CLOSURE: {
+            FREE(Obj_Closure, object);
+            break;
+        }
         case OBJ_FUNCTION: {
             Obj_Function* function = (Obj_Function*) object;
             chunk_free(&function->chunk);

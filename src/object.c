@@ -71,6 +71,12 @@ Obj_Function* function_new(void) {
     return function;
 }
 
+Obj_Closure* closure_new(Obj_Function* function) {
+    Obj_Closure* closure = _ALLOCATE_OBJ(Obj_Closure, OBJ_CLOSURE);
+    closure->function    = function;
+    return closure;
+}
+
 Obj_Native* native_new(Native_Fn function) {
     Obj_Native* native = _ALLOCATE_OBJ(Obj_Native, OBJ_NATIVE);
     native->function   = function;
@@ -79,6 +85,10 @@ Obj_Native* native_new(Native_Fn function) {
 
 void object_print(Value value) {
     switch(OBJ_TYPE(value)) {
+        case OBJ_CLOSURE: {
+            _function_print(AS_CLOSURE(value)->function);
+            break;
+        }
         case OBJ_FUNCTION: {
             _function_print(AS_FUNCTION(value));
             break;
