@@ -14,13 +14,14 @@ typedef struct Call_Frame {
 } Call_Frame;
 
 typedef struct VM {
-    Call_Frame frames[FRAMES_MAX];
-    int        frame_count;
-    Value      stack[STACK_MAX];
-    Value*     stack_top;
-    Table      globals;
-    Table      strings;
-    Obj*       objects;
+    Call_Frame   frames[FRAMES_MAX];
+    int          frame_count;
+    Value        stack[STACK_MAX];
+    Value*       stack_top;
+    Table        globals;
+    Table        strings;
+    Obj_Upvalue* open_upvalues;
+    Obj*         objects;
 } VM;
 
 typedef enum Interpret_Result {

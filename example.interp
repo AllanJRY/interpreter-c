@@ -26,3 +26,14 @@
 //print fib(35);
 //print clock() - start;
 
+fun outer() {
+    var x = "outside";
+    fun inner() {
+        print x;
+    }
+
+    inner();
+}
+
+outer();
+

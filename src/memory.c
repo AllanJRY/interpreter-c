@@ -31,6 +31,8 @@ void mem_free_objects(void) {
 static void _free_object(Obj* object) {
     switch(object->type) {
         case OBJ_CLOSURE: {
+            Obj_Closure* closure = (Obj_Closure*)object;
+            FREE_ARRAY(Obj_Upvalue*, closure->upvalues, closure->upvalue_count);
             FREE(Obj_Closure, object);
             break;
         }
@@ -48,6 +50,10 @@ static void _free_object(Obj* object) {
             Obj_String* string = (Obj_String*) object;
             FREE_ARRAY(char, string->chars, string->length + 1);
             FREE(Obj_String, object);
+            break;
+        }
+        case OBJ_UPVALUE: {
+            FREE(Obj_Upvalue, object);
             break;
         }
     }

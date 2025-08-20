@@ -55,6 +55,39 @@ Interpret_Result vm_interpret(const char* source) {
     return _vm_run();
 }
 
+static Obj_Upvalue* _upvalue_capture(Value* local) {
+    Obj_Upvalue* prev_upvalue = NULL;
+    Obj_Upvalue* upvalue      = vm.open_upvalues;
+    while(upvalue != NULL && upvalue->location > local) {
+        prev_upvalue = upvalue;
+        upvalue = upvalue->next;
+    }
+
+    if (upvalue != NULL && upvalue->location == local) {
+        return upvalue;
+    }
+    
+    Obj_Upvalue* created_upvalue = upvalue_new(local);
+    created_upvalue->next = upvalue;
+
+    if(prev_upvalue == NULL) {
+        vm.open_upvalues = created_upvalue;
+    } else {
+        prev_upvalue->next = created_upvalue;
+    }
+
+    return created_upvalue;
+}
+
+static void _upvalue_close_from_slot_and_above(Value* last) {
+    while(vm.open_upvalues != NULL && vm.open_upvalues->location >= last) {
+        Obj_Upvalue* upvalue = vm.open_upvalues;
+        upvalue->closed      = *upvalue->location;
+        upvalue->location    = &upvalue->closed;
+        vm.open_upvalues     = upvalue->next;
+    }
+}
+
 static Interpret_Result _vm_run(void) {
     Call_Frame* frame = &vm.frames[vm.frame_count - 1];
 
@@ -145,6 +178,16 @@ static Interpret_Result _vm_run(void) {
                 }
                 break;
             }
+            case OP_GET_UPVALUE: {
+                uint8_t slot = READ_BYTE();
+                vm_stack_push(*frame->closure->upvalues[slot]->location);
+                break;
+            }
+            case OP_SET_UPVALUE: {
+                uint8_t slot = READ_BYTE();
+                *frame->closure->upvalues[slot]->location = _vm_stack_peek(0);
+                break;
+            }
             case OP_EQUAL: {
                 Value a = vm_stack_pop();
                 Value b = vm_stack_pop();
@@ -232,10 +275,25 @@ static Interpret_Result _vm_run(void) {
                 Obj_Function* function = AS_FUNCTION(READ_CONSTANT());
                 Obj_Closure* closure   = closure_new(function);
                 vm_stack_push(V_OBJ(closure));
+                for (int i = 0; i < closure->upvalue_count; i += 1) {
+                    uint8_t is_local = READ_BYTE();
+                    uint8_t idx      = READ_BYTE();
+                    if(is_local) {
+                        closure->upvalues[i] = _upvalue_capture(frame->slots + idx);
+                    } else {
+                        closure->upvalues[i] = frame->closure->upvalues[idx];
+                    }
+                }
+                break;
+            }
+            case OP_CLOSE_UPVALUE: {
+                _upvalue_close_from_slot_and_above(vm.stack_top - 1);
+                vm_stack_pop();
                 break;
             }
             case OP_RETURN: {
-                Value result    = vm_stack_pop();
+                Value result = vm_stack_pop();
+                _upvalue_close_from_slot_and_above(frame->slots);
                 vm.frame_count -= 1;
 
                 if (vm.frame_count == 0) {
@@ -328,7 +386,9 @@ static Value _vm_stack_peek(int distance) {
 }
 
 static void _vm_stack_reset(void) {
-    vm.stack_top = vm.stack;
+    vm.stack_top     = vm.stack;
+    vm.frame_count   = 0;
+    vm.open_upvalues = NULL;
 }
 
 static void _native_define(const char* name, Native_Fn function) {

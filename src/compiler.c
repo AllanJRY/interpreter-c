@@ -42,7 +42,13 @@ typedef struct Parse_Rule {
 typedef struct Local {
     Scanner_Token name;
     int           depth;
+    bool          is_captured;
 } Local;
+
+typedef struct Upvalue {
+    uint8_t idx;
+    bool    is_local;
+} Upvalue;
 
 typedef enum Function_Type {
     TYPE_FUNCTION,
@@ -55,6 +61,7 @@ typedef struct Compiler {
     Function_Type    type;
     Local            locals[UINT8_COUNT];
     int              local_count;
+    Upvalue          upvalues[UINT8_COUNT];
     int              scope_depth;
 } Compiler;
 
@@ -116,6 +123,9 @@ static Chunk*        _compiler_current_chunk(void);
 
 static void _local_add(Scanner_Token name);
 static int  _local_resolve(Compiler* compiler, Scanner_Token* name);
+
+static int _upvalue_add(Compiler* compiler, uint8_t idx, bool is_local);
+static int _upvalue_resolve(Compiler* compiler, Scanner_Token* name);
 
 static void _jump_patch(int offset);
 
@@ -266,9 +276,10 @@ static void _local_add(Scanner_Token name) {
         _error("Too many local variable in function.");
         return;
     }
-    Local* local = &current_compiler->locals[current_compiler->local_count++];
-    local->name  = name;
-    local->depth = -1;
+    Local* local       = &current_compiler->locals[current_compiler->local_count++];
+    local->name        = name;
+    local->depth       = -1;
+    local->is_captured = false;
 }
 
 static int _local_resolve(Compiler* compiler, Scanner_Token* name) {
@@ -288,6 +299,45 @@ static int _local_resolve(Compiler* compiler, Scanner_Token* name) {
 static void _variable_mark_initialized(void) {
     if (current_compiler->scope_depth == 0) return;
     current_compiler->locals[current_compiler->local_count - 1].depth = current_compiler->scope_depth;
+}
+
+static int _upvalue_add(Compiler* compiler, uint8_t idx, bool is_local) {
+    int upvalue_count = compiler->function->upvalue_count;
+
+    for (int i = 0; i < upvalue_count; i += 1) {
+        Upvalue* upvalue = &compiler->upvalues[i];
+        if (upvalue->idx == idx && upvalue->is_local == is_local) {
+            return i;
+        }
+    }
+
+    if (upvalue_count == UINT8_COUNT) {
+        _error("Too many closure variables in function");
+        return 0;
+    }
+
+    compiler->upvalues[upvalue_count].is_local = is_local;
+    compiler->upvalues[upvalue_count].idx      = idx;
+    return compiler->function->upvalue_count++;
+}
+
+static int _upvalue_resolve(Compiler* compiler, Scanner_Token* name) {
+    if (compiler->enclosing == NULL) {
+        return -1;
+    }
+
+    int local = _local_resolve(compiler->enclosing, name);
+    if (local != -1) {
+        compiler->enclosing->locals[local].is_captured = true;
+        return _upvalue_add(compiler, (uint8_t) local, true);
+    }
+
+    int upvalue = _upvalue_resolve(compiler->enclosing, name);
+    if(upvalue != -1) {
+        return _upvalue_add(compiler, (uint8_t) upvalue, false);
+    }
+
+    return -1;
 }
 
 static void _statement(void) {
@@ -580,6 +630,9 @@ static void _variable_named(Scanner_Token name, bool can_assign) {
     if (arg != -1) {
         get_op = OP_GET_LOCAL;
         set_op = OP_SET_LOCAL;
+    } else if ((arg = _upvalue_resolve(current_compiler, &name)) != -1) {
+        get_op = OP_GET_UPVALUE;
+        set_op = OP_SET_UPVALUE;
     } else {
         arg = _constant_identifier(&name);
         get_op = OP_GET_GLOBAL;
@@ -631,7 +684,11 @@ static void _scope_begin(void) {
 static void _scope_end(void) {
     current_compiler->scope_depth -= 1;
     while(current_compiler->local_count > 0 && current_compiler->locals[current_compiler->local_count - 1].depth > current_compiler->scope_depth) {
-        _compiler_emit_byte(OP_POP);
+        if (current_compiler->locals[current_compiler->local_count - 1].is_captured) {
+            _compiler_emit_byte(OP_CLOSE_UPVALUE);
+        } else {
+            _compiler_emit_byte(OP_POP);
+        }
         current_compiler->local_count -= 1;
     }
 }
@@ -660,6 +717,10 @@ static void _function(Function_Type type) {
     Obj_Function* function = _compiler_end(); // No _scope_end call needed because of this call.
 
     _compiler_emit_bytes(OP_CLOSURE, _make_constant(V_OBJ(function)));
+    for (int i = 0; i < function->upvalue_count; i += 1) {
+        _compiler_emit_byte(compiler.upvalues[i].is_local ? 1 : 0);
+        _compiler_emit_byte(compiler.upvalues[i].idx);
+    }
 }
 
 static void _function_call(bool can_assign) {
@@ -697,6 +758,7 @@ static void _compiler_init(Compiler* compiler, Function_Type type) {
     }
     Local* local          = &current_compiler->locals[current_compiler->local_count++];
     local->depth          = 0;
+    local->is_captured          = false;
     local->name.start     = "";
     local->name.length    = 0;
 }

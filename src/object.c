@@ -63,17 +63,34 @@ Obj_String* string_take(char* chars, int length) {
     return _string_allocate(chars, length, hash);
 }
 
+Obj_Upvalue* upvalue_new(Value* slot) {
+    Obj_Upvalue* upvalue = _ALLOCATE_OBJ(Obj_Upvalue, OBJ_UPVALUE);
+    upvalue->location    = slot;
+    upvalue->closed      = V_NIL;
+    upvalue->next        = NULL;
+    return upvalue;
+}
+
 Obj_Function* function_new(void) {
-    Obj_Function* function = _ALLOCATE_OBJ(Obj_Function, OBJ_FUNCTION);
-    function->arity        = 0;
-    function->name         = NULL;
+    Obj_Function* function  = _ALLOCATE_OBJ(Obj_Function, OBJ_FUNCTION);
+    function->arity         = 0;
+    function->upvalue_count = 0;
+    function->name          = NULL;
     chunk_init(&function->chunk);
     return function;
 }
 
 Obj_Closure* closure_new(Obj_Function* function) {
-    Obj_Closure* closure = _ALLOCATE_OBJ(Obj_Closure, OBJ_CLOSURE);
-    closure->function    = function;
+    Obj_Upvalue** upvalues = ALLOCATE(Obj_Upvalue*, function->upvalue_count);
+
+    for(int i = 0; i < function->upvalue_count; i += 1) {
+        upvalues[i] = NULL;
+    }
+
+    Obj_Closure* closure   = _ALLOCATE_OBJ(Obj_Closure, OBJ_CLOSURE);
+    closure->function      = function;
+    closure->upvalues      = upvalues;
+    closure->upvalue_count = function->upvalue_count;
     return closure;
 }
 
@@ -99,6 +116,10 @@ void object_print(Value value) {
         }
         case OBJ_STRING: {
             printf("%s", AS_CSTRING(value));
+            break;
+        }
+        case OBJ_UPVALUE: {
+            printf("upvalue");
             break;
         }
     }
