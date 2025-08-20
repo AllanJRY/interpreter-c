@@ -659,7 +659,7 @@ static void _function(Function_Type type) {
     _block();
     Obj_Function* function = _compiler_end(); // No _scope_end call needed because of this call.
 
-    _compiler_emit_bytes(OP_CONSTANT, _make_constant(V_OBJ(function)));
+    _compiler_emit_bytes(OP_CLOSURE, _make_constant(V_OBJ(function)));
 }
 
 static void _function_call(bool can_assign) {

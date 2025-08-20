@@ -21,7 +21,7 @@ static Value _vm_stack_peek(int distance);
 static void  _vm_stack_reset(void);
 
 static bool _call_value(Value callee, int arg_count);
-static bool _call(Obj_Function* function, int arg_count);
+static bool _call(Obj_Closure* closure, int arg_count);
 
 static Value _native_clock(int arg_count, Value* args);
 static void  _native_define(const char* name, Native_Fn function);
@@ -47,7 +47,10 @@ Interpret_Result vm_interpret(const char* source) {
     if(function == NULL) return INTERPRET_COMPILE_ERROR;
 
     vm_stack_push(V_OBJ(function));
-    _call(function, 0);
+    Obj_Closure* closure = closure_new(function);
+    vm_stack_pop();
+    vm_stack_push(V_OBJ(closure));
+    _call(closure, 0);
 
     return _vm_run();
 }
@@ -58,7 +61,7 @@ static Interpret_Result _vm_run(void) {
     // NOTE(AJA): Post increment is important here, because we return the current instruction pointer address,
     //            and then, and only then, we increment the instruction pointer address.
     #define READ_BYTE() (*frame->ip++)  
-    #define READ_CONSTANT() (frame->function->chunk.constants.values[READ_BYTE()])  
+    #define READ_CONSTANT() (frame->closure->function->chunk.constants.values[READ_BYTE()])  
     #define READ_SHORT() (frame->ip += 2, (uint16_t)((frame->ip[-2] << 8) | frame->ip[-1]))
     #define READ_STRING() (AS_STRING(READ_CONSTANT()))
     #define BINARY_OP(value_type, op)                                          \
@@ -81,7 +84,7 @@ static Interpret_Result _vm_run(void) {
             printf(" ]");
         }
         printf("\n");
-        instruction_disassemble(&frame->function->chunk, (int)(frame->ip - frame->function->chunk.code));
+        instruction_disassemble(&frame->closure->function->chunk, (int)(frame->ip - frame->closure->function->chunk.code));
         #endif
 
         uint8_t instruction;
@@ -225,6 +228,12 @@ static Interpret_Result _vm_run(void) {
                 frame = &vm.frames[vm.frame_count - 1];
                 break;
             }
+            case OP_CLOSURE: {
+                Obj_Function* function = AS_FUNCTION(READ_CONSTANT());
+                Obj_Closure* closure   = closure_new(function);
+                vm_stack_push(V_OBJ(closure));
+                break;
+            }
             case OP_RETURN: {
                 Value result    = vm_stack_pop();
                 vm.frame_count -= 1;
@@ -270,7 +279,7 @@ static void _concatenate(void) {
 static bool _call_value(Value callee, int arg_count) {
     if (IS_OBJ(callee)) {
         switch(OBJ_TYPE(callee)) {
-            case OBJ_FUNCTION: return _call(AS_FUNCTION(callee), arg_count);
+            case OBJ_CLOSURE: return _call(AS_CLOSURE(callee), arg_count);
             case OBJ_NATIVE: {
                 Native_Fn native  = AS_NATIVE(callee);
                 Value result      = native(arg_count, vm.stack_top - arg_count);
@@ -286,9 +295,9 @@ static bool _call_value(Value callee, int arg_count) {
     return false;
 }
 
-static bool _call(Obj_Function* function, int arg_count) {
-    if (arg_count != function->arity) {
-        _vm_runtime_error("Expected %d arguments but got %d.", function->arity, arg_count);
+static bool _call(Obj_Closure* closure, int arg_count) {
+    if (arg_count != closure->function->arity) {
+        _vm_runtime_error("Expected %d arguments but got %d.", closure->function->arity, arg_count);
         return false;
     }
 
@@ -298,8 +307,8 @@ static bool _call(Obj_Function* function, int arg_count) {
     }
 
     Call_Frame* frame = &vm.frames[vm.frame_count++];
-    frame->function   = function;
-    frame->ip         = function->chunk.code;
+    frame->closure    = closure;
+    frame->ip         = closure->function->chunk.code;
     frame->slots      = vm.stack_top - arg_count - 1;
     return true;
 }
@@ -346,7 +355,7 @@ static void _vm_runtime_error(const char* format, ...) {
 
     for (int i = vm.frame_count - 1; i >= 0; i -= 1) {
         Call_Frame* frame = &vm.frames[i];
-        Obj_Function* function = frame->function;
+        Obj_Function* function = frame->closure->function;
         size_t instruction = frame->ip - function->chunk.code - 1;
 
         fprintf(stderr, "[line %d] in ", function->chunk.lines[instruction]);

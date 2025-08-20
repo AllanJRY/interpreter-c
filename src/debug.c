@@ -112,6 +112,14 @@ int instruction_disassemble(Chunk* chunk, int offset) {
         case OP_LOOP: {
             return _instruction_jump("OP_LOOP", -1, chunk, offset);
         }
+        case OP_CLOSURE: {
+            offset += 1;
+            uint8_t constant = chunk->code[offset++];
+            printf("%-16s %4d ", "OP_CLOSURE", constant);
+            value_print(chunk->constants.values[constant]);
+            printf("\n");
+            return offset;
+        }
         case OP_RETURN: {
             return instruction_simple("OP_RETURN", offset);
         }
