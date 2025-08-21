@@ -326,8 +326,8 @@ static bool _is_falsey(Value value) {
 }
 
 static void _concatenate(void) {
-    Obj_String* b = AS_STRING(vm_stack_pop());
-    Obj_String* a = AS_STRING(vm_stack_pop());
+    Obj_String* b = AS_STRING(_vm_stack_peek(0));
+    Obj_String* a = AS_STRING(_vm_stack_peek(1));
 
     int length  = a->length + b->length;
     char* chars = ALLOCATE(char, length + 1);
@@ -336,6 +336,8 @@ static void _concatenate(void) {
     chars[length] = '\0';
     
     Obj_String* result = string_take(chars, length);
+    vm_stack_pop();
+    vm_stack_pop();
     vm_stack_push(V_OBJ(result));
 }
 
