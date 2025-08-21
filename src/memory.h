@@ -20,6 +20,9 @@ void* reallocate(void* pointer, size_t old_size, size_t new_size);
 
 void collect_garbage(void);
 
+void mark_value(Value value);
+void mark_object(Obj* object);
+
 void mem_free_objects(void);
 
 #define INTERP_MEMORY_H

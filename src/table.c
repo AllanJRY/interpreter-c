@@ -137,3 +137,11 @@ static void _table_adjust_cap(Table* table, int cap) {
     table->entries = entries;
     table->cap     = cap;
 }
+
+void mark_table(Table* table) {
+    for (int i = 0; i < table->cap; i += 1) {
+        Table_Entry* entry = &table->entries[i];
+        mark_object((Obj*) entry->key);
+        mark_value(entry->value);
+    }
+}

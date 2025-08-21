@@ -4,6 +4,7 @@
 
 #include "common.h"
 #include "compiler.h"
+#include "memory.h"
 #include "scanner.h"
 
 #ifdef DEBUG_PRINT_CODE
@@ -194,6 +195,14 @@ Obj_Function* compiler_compile(const char* source) {
 
     Obj_Function* function = _compiler_end();
     return parser.had_error ? NULL : function;
+}
+
+void mark_compiler_roots(void) {
+    Compiler* compiler = current_compiler;
+    while(compiler != NULL) {
+        mark_object((Obj*) compiler->function);
+        compiler = compiler->enclosing;
+    }
 }
 
 static void _declaration(void) {

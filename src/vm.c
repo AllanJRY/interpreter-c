@@ -30,7 +30,10 @@ VM vm;
 
 void vm_init(void) {
     _vm_stack_reset();
-    vm.objects = NULL;
+    vm.objects       = NULL;
+    vm.gray_count    = 0;
+    vm.gray_capacity = 0;
+    vm.gray_stack    = NULL;
     table_init(&vm.globals);
     table_init(&vm.strings);
     _native_define("clock", _native_clock);

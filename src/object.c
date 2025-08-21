@@ -12,10 +12,11 @@
 static void _function_print(Obj_Function* function);
 
 static Obj* _object_allocate(size_t size, Obj_Type type) {
-    Obj* object  = (Obj*) reallocate(NULL, 0, size);
-    object->type = type;
-    object->next = vm.objects;
-    vm.objects   = object;
+    Obj* object       = (Obj*) reallocate(NULL, 0, size);
+    object->type      = type;
+    object->is_marked = false;
+    object->next      = vm.objects;
+    vm.objects        = object;
 
     #ifdef DEBUG_LOG_GC
         printf("%p allocate %zu for %d\n", (void*) object, size, type);
