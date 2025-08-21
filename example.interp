@@ -26,6 +26,15 @@
 //print fib(35);
 //print clock() - start;
 
+fun test_native_clock() {
+    var ignored1 = 1;
+    var ignored2 = "Je suis inutile";
+    var ignored3 = "Moi aussi";
+    var ignored4 = 20.3;
+    var result = clock();
+    print result;
+}
+
 fun outer() {
     var x = "outside";
     fun inner() {
@@ -35,5 +44,6 @@ fun outer() {
     inner();
 }
 
+test_native_clock();
 outer();
 

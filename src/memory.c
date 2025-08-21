@@ -17,11 +17,18 @@ static void _mark_array(Value_Array* array);
 static void _free_object(Obj* object);
 static void _blacken_object(Obj* object);
 
+#define GC_HEAP_GROW_FACTOR 2
+
 void* reallocate(void* pointer, size_t old_size, size_t new_size) {
+    vm.bytes_allocated += new_size - old_size;
+
     if (new_size > old_size) {
         #ifdef DEBUG_STRESS_GC
             collect_garbage();
         #endif
+        if (vm.bytes_allocated > vm.next_gc) {
+            collect_garbage();
+        }
     }
 
     if (new_size == 0) {
@@ -37,15 +44,18 @@ void* reallocate(void* pointer, size_t old_size, size_t new_size) {
 void collect_garbage(void) {
     #ifdef DEBUG_LOG_GC
         printf("-- gc begin\n");
+        size_t before = vm.bytes_allocated;
     #endif
 
     _mark_roots();
     _trace_references();
     table_remove_white(&vm.strings);
     _sweep();
+    vm.next_gc = vm.bytes_allocated * GC_HEAP_GROW_FACTOR;
 
     #ifdef DEBUG_LOG_GC
         printf("-- gc end\n");
+        printf(" collected %zu bytes (from %zu to %zu) next at %zu\n", before - vm.bytes_allocated, before, vm.bytes_allocated, vm.next_gc);
     #endif
 }
 
