@@ -30,7 +30,9 @@ static Obj_String* _string_allocate(char* chars, int length, uint32_t hash) {
     string->length     = length;
     string->chars      = chars;
     string->hash       = hash;
+    vm_stack_push(V_OBJ(string));
     table_set(&vm.strings, string, V_NIL);
+    vm_stack_pop();
     return string;
 }
 
