@@ -24,6 +24,7 @@ bool table_delete(Table* table, Obj_String* key);
 void table_copy(Table* from, Table* to);
 
 void mark_table(Table* table);
+void table_remove_white(Table* table);
 
 #define INTERP_TABLE_H
 #endif

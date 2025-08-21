@@ -11,6 +11,7 @@
 
 static void _mark_roots(void);
 static void _trace_references(void);
+static void _sweep(void);
 static void _mark_array(Value_Array* array);
 
 static void _free_object(Obj* object);
@@ -40,6 +41,8 @@ void collect_garbage(void) {
 
     _mark_roots();
     _trace_references();
+    table_remove_white(&vm.strings);
+    _sweep();
 
     #ifdef DEBUG_LOG_GC
         printf("-- gc end\n");
@@ -99,6 +102,30 @@ static void _blacken_object(Obj* object) {
         case OBJ_NATIVE:
         case OBJ_STRING:
             break;
+    }
+}
+
+static void _sweep(void) {
+    Obj* previous = NULL;
+    Obj* object   = vm.objects;
+
+    while(object != NULL) {
+        if (object->is_marked) {
+            object->is_marked = false;
+            previous          = object;
+            object            = object->next;
+        } else {
+            Obj* unreached = object;
+            object         = object->next;
+
+            if(previous != NULL) {
+                previous->next = object;
+            } else {
+                vm.objects = object;
+            }
+
+            _free_object(unreached);
+        }
     }
 }
 
