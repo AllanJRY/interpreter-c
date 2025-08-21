@@ -16,8 +16,9 @@
 
 #define FREE_ARRAY(type, pointer, old_capacity) reallocate(pointer, sizeof(type) * (old_capacity), 0)
 
-
 void* reallocate(void* pointer, size_t old_size, size_t new_size);
+
+void collect_garbage(void);
 
 void mem_free_objects(void);
 
