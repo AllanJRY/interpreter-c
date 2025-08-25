@@ -26,24 +26,27 @@
 //print fib(35);
 //print clock() - start;
 
-fun test_native_clock() {
-    var ignored1 = 1;
-    var ignored2 = "Je suis inutile";
-    var ignored3 = "Moi aussi";
-    var ignored4 = 20.3;
-    var result = clock();
-    print result;
-}
+//fun test_native_clock() {
+//    var ignored1 = 1;
+//    var ignored2 = "Je suis inutile";
+//    var ignored3 = "Moi aussi";
+//    var ignored4 = 20.3;
+//    var result = clock();
+//    print result;
+//}
 
-fun outer() {
-    var x = "outside";
-    fun inner() {
-        print x;
-    }
+// fun outer() {
+//    var x = "outside";
+//    fun inner() {
+//        print x;
+//    }
+// 
+//    inner();
+//}
 
-    inner();
-}
+//test_native_clock();
+//outer();
 
-test_native_clock();
-outer();
+class Test {}
 
+print Test();

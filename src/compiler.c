@@ -89,6 +89,7 @@ static uint8_t _argument_list(void);
 static void _declaration(void);
 static void _declaration_var(void);
 static void _declaration_fun(void);
+static void _declaration_class(void);
 static void _statement(void);
 static void _statement_print(void);
 static void _statement_for(void);
@@ -206,7 +207,9 @@ void mark_compiler_roots(void) {
 }
 
 static void _declaration(void) {
-    if (_match(TOKEN_FUN)) {
+    if (_match(TOKEN_CLASS)) {
+        _declaration_class();
+    } else if (_match(TOKEN_FUN)) {
         _declaration_fun();
     } else if (_match(TOKEN_VAR)) {
         _declaration_var();
@@ -234,6 +237,18 @@ static void _declaration_fun(void) {
     _variable_mark_initialized();
     _function(TYPE_FUNCTION);
     _variable_define(global);
+}
+
+static void _declaration_class(void) {
+    _parser_consume(TOKEN_IDENTIFIER, "Expect class name.");
+    uint8_t name_constant = _constant_identifier(&parser.previous);
+    _variable_declare();
+
+    _compiler_emit_bytes(OP_CLASS, name_constant);
+    _variable_define(name_constant);
+
+    _parser_consume(TOKEN_LEFT_BRACE, "Expect '{' before class body.");
+    _parser_consume(TOKEN_RIGHT_BRACE, "Expect '}' after class body.");
 }
 
 static uint8_t _variable_parse(const char* error_msg) {

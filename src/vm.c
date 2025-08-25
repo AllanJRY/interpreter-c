@@ -311,6 +311,10 @@ static Interpret_Result _vm_run(void) {
                 frame = &vm.frames[vm.frame_count - 1];
                 break;
             }
+            case OP_CLASS: {
+                vm_stack_push(V_OBJ(class_new(READ_STRING())));
+                break;
+            }
         }
     }
 
@@ -344,6 +348,11 @@ static void _concatenate(void) {
 static bool _call_value(Value callee, int arg_count) {
     if (IS_OBJ(callee)) {
         switch(OBJ_TYPE(callee)) {
+            case OBJ_CLASS: {
+                Obj_Class* class = AS_CLASS(callee);
+                vm.stack_top[-arg_count - 1] = V_OBJ(instance_new(class));
+                return true;
+            };
             case OBJ_CLOSURE: return _call(AS_CLOSURE(callee), arg_count);
             case OBJ_NATIVE: {
                 Native_Fn native  = AS_NATIVE(callee);

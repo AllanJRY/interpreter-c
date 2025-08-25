@@ -108,14 +108,35 @@ Obj_Native* native_new(Native_Fn function) {
     return native;
 }
 
+Obj_Class* class_new(Obj_String* name) {
+    Obj_Class* new_class = _ALLOCATE_OBJ(Obj_Class, OBJ_CLASS);
+    new_class->name     = name;
+    return new_class;
+}
+
+Obj_Instance* instance_new(Obj_Class* class) {
+    Obj_Instance* instance = _ALLOCATE_OBJ(Obj_Instance, OBJ_INSTANCE);
+    instance->class        = class;
+    table_init(&instance->fields);
+    return instance;
+}
+
 void object_print(Value value) {
     switch(OBJ_TYPE(value)) {
+        case OBJ_CLASS: {
+            printf("%s", AS_CLASS(value)->name->chars);
+            break;
+        }
         case OBJ_CLOSURE: {
             _function_print(AS_CLOSURE(value)->function);
             break;
         }
         case OBJ_FUNCTION: {
             _function_print(AS_FUNCTION(value));
+            break;
+        }
+        case OBJ_INSTANCE: {
+            printf("%s instance", AS_INSTANCE(value)->class->name->chars);
             break;
         }
         case OBJ_NATIVE: {
