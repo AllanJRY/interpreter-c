@@ -112,6 +112,8 @@ static void _scope_begin(void);
 static void _scope_end(void);
 static void _function(Function_Type type);
 static void _function_call(bool can_assign);
+static void _dot(bool can_assign);
+
 
 static void          _compiler_init(Compiler* compiler, Function_Type type);
 static Obj_Function* _compiler_end(void);
@@ -144,7 +146,7 @@ Parse_Rule rules[] = {
     [TOKEN_LEFT_BRACE]    = {NULL,      NULL,           PREC_NONE},
     [TOKEN_RIGHT_BRACE]   = {NULL,      NULL,           PREC_NONE},
     [TOKEN_COMMA]         = {NULL,      NULL,           PREC_NONE},
-    [TOKEN_DOT]           = {NULL,      NULL,           PREC_NONE},
+    [TOKEN_DOT]           = {NULL,      _dot,           PREC_CALL},
     [TOKEN_MINUS]         = {_unary,    _binary,        PREC_TERM},
     [TOKEN_PLUS]          = {NULL,      _binary,        PREC_TERM},
     [TOKEN_SEMICOLON]     = {NULL,      NULL,           PREC_NONE},
@@ -768,6 +770,19 @@ static uint8_t _argument_list(void) {
     _parser_consume(TOKEN_RIGHT_PAREN, "Expect ')' after arguments.");
     return arg_count;
 }
+
+static void _dot(bool can_assign) {
+
+    _parser_consume(TOKEN_IDENTIFIER, "Expect property name after '.'.");
+    uint8_t name_constant = _constant_identifier(&parser.previous);
+    if (can_assign && _match(TOKEN_EQUAL)) {
+        _expression();
+        _compiler_emit_bytes(OP_SET_PROPERTY, name_constant);
+    } else {
+        _compiler_emit_bytes(OP_GET_PROPERTY, name_constant);
+    }
+}
+
 
 static void _compiler_init(Compiler* compiler, Function_Type type) {
     compiler->enclosing   = current_compiler;

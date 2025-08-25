@@ -193,6 +193,38 @@ static Interpret_Result _vm_run(void) {
                 *frame->closure->upvalues[slot]->location = _vm_stack_peek(0);
                 break;
             }
+            case OP_GET_PROPERTY: {
+                if (!IS_INSTANCE(_vm_stack_peek(0))) {
+                    _vm_runtime_error("Only instances have properties.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+
+                Obj_Instance* instance = AS_INSTANCE(_vm_stack_peek(0));
+                Obj_String* name = READ_STRING();
+
+                Value value;
+                if (table_get(&instance->fields, name, &value)) {
+                    vm_stack_pop(); // Instance
+                    vm_stack_push(value);
+                    break;
+                }
+
+                _vm_runtime_error("Undefined property '%s'.", name->chars);
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            case OP_SET_PROPERTY: {
+                if (!IS_INSTANCE(_vm_stack_peek(1))) {
+                    _vm_runtime_error("Only instances have fields.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+
+                Obj_Instance* instance = AS_INSTANCE(_vm_stack_peek(1));
+                table_set(&instance->fields, READ_STRING(), _vm_stack_peek(0));
+                Value value = vm_stack_pop();
+                vm_stack_pop();
+                vm_stack_push(value);
+                break;
+            }
             case OP_EQUAL: {
                 Value a = vm_stack_pop();
                 Value b = vm_stack_pop();
