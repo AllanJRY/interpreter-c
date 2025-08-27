@@ -111,6 +111,7 @@ Obj_Native* native_new(Native_Fn function) {
 Obj_Class* class_new(Obj_String* name) {
     Obj_Class* new_class = _ALLOCATE_OBJ(Obj_Class, OBJ_CLASS);
     new_class->name     = name;
+    table_init(&new_class->methods);
     return new_class;
 }
 
@@ -121,8 +122,20 @@ Obj_Instance* instance_new(Obj_Class* class) {
     return instance;
 }
 
+Obj_Bound_Method* bound_method_new(Value receiver, Obj_Closure* method) {
+    Obj_Bound_Method* bound = _ALLOCATE_OBJ(Obj_Bound_Method, OBJ_BOUND_METHOD);
+    bound->receiver         = receiver;
+    bound->method           = method;
+
+    return bound;
+}
+
 void object_print(Value value) {
     switch(OBJ_TYPE(value)) {
+        case OBJ_BOUND_METHOD: {
+            _function_print(AS_BOUND_METHOD(value)->method->function);
+            break;
+        }
         case OBJ_CLASS: {
             printf("%s", AS_CLASS(value)->name->chars);
             break;

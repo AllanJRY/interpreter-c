@@ -112,6 +112,7 @@ static void _scope_begin(void);
 static void _scope_end(void);
 static void _function(Function_Type type);
 static void _function_call(bool can_assign);
+static void _method(void);
 static void _dot(bool can_assign);
 
 
@@ -243,14 +244,20 @@ static void _declaration_fun(void) {
 
 static void _declaration_class(void) {
     _parser_consume(TOKEN_IDENTIFIER, "Expect class name.");
+    Scanner_Token class_name = parser.previous;
     uint8_t name_constant = _constant_identifier(&parser.previous);
     _variable_declare();
 
     _compiler_emit_bytes(OP_CLASS, name_constant);
     _variable_define(name_constant);
 
+    _variable_named(class_name, false);
     _parser_consume(TOKEN_LEFT_BRACE, "Expect '{' before class body.");
+    while(!_check(TOKEN_RIGHT_BRACE) && !_check(TOKEN_EOF)) {
+        _method();
+    }
     _parser_consume(TOKEN_RIGHT_BRACE, "Expect '}' after class body.");
+    _compiler_emit_byte(OP_POP);
 }
 
 static uint8_t _variable_parse(const char* error_msg) {
@@ -753,6 +760,14 @@ static void _function_call(bool can_assign) {
     (void) can_assign;
     uint8_t arg_count = _argument_list();
     _compiler_emit_bytes(OP_CALL, arg_count);
+}
+
+static void _method(void) {
+    _parser_consume(TOKEN_IDENTIFIER, "Expect method name.");
+    uint8_t constant_idx = _constant_identifier(&parser.previous);
+    Function_Type type = TYPE_FUNCTION;
+    _function(type);
+    _compiler_emit_bytes(OP_METHOD, constant_idx);
 }
 
 static uint8_t _argument_list(void) {

@@ -91,9 +91,16 @@ static void _blacken_object(Obj* object) {
     #endif
 
     switch(object->type) {
+        case OBJ_BOUND_METHOD: {
+            Obj_Bound_Method* bound = (Obj_Bound_Method*) object;
+            mark_value(bound->receiver);
+            mark_object((Obj*) bound->method);
+            break;
+        }
         case OBJ_CLASS: {
             Obj_Class* class = (Obj_Class*) object;
             mark_object((Obj*) class->name);
+            mark_table(&class->methods);
             break;
         }
         case OBJ_INSTANCE: {
@@ -199,7 +206,13 @@ static void _free_object(Obj* object) {
     #endif
 
     switch(object->type) {
+        case OBJ_BOUND_METHOD: {
+            FREE(Obj_Bound_Method, object);
+            break;
+        }
         case OBJ_CLASS: {
+            Obj_Class* class = (Obj_Class*) object;
+            table_free(&class->methods);
             FREE(Obj_Class, object);
             break;
         }

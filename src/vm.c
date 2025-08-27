@@ -93,6 +93,27 @@ static void _upvalue_close_from_slot_and_above(Value* last) {
     }
 }
 
+static void _method_define(Obj_String* name) {
+    Value method = _vm_stack_peek(0);
+    Obj_Class* class = AS_CLASS(_vm_stack_peek(1));
+    table_set(&class->methods, name, method);
+    vm_stack_pop();
+}
+
+static bool _method_bind(Obj_Class* class, Obj_String* name) {
+    Value method;
+    if (!table_get(&class->methods, name, &method)) {
+        _vm_runtime_error("Undefined property '%s'.", name->chars);
+        return false;
+    }
+
+    Obj_Bound_Method* bound = bound_method_new(_vm_stack_peek(0), AS_CLOSURE(method));
+    vm_stack_pop();
+    vm_stack_push(V_OBJ(bound));
+
+    return true;
+}
+
 static Interpret_Result _vm_run(void) {
     Call_Frame* frame = &vm.frames[vm.frame_count - 1];
 
@@ -209,8 +230,11 @@ static Interpret_Result _vm_run(void) {
                     break;
                 }
 
-                _vm_runtime_error("Undefined property '%s'.", name->chars);
-                return INTERPRET_RUNTIME_ERROR;
+                if(!_method_bind(instance->class, name)) {
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+
+                break;
             }
             case OP_SET_PROPERTY: {
                 if (!IS_INSTANCE(_vm_stack_peek(1))) {
@@ -347,6 +371,10 @@ static Interpret_Result _vm_run(void) {
                 vm_stack_push(V_OBJ(class_new(READ_STRING())));
                 break;
             }
+            case OP_METHOD: {
+                _method_define(READ_STRING());
+                break;
+            }
         }
     }
 
@@ -380,11 +408,15 @@ static void _concatenate(void) {
 static bool _call_value(Value callee, int arg_count) {
     if (IS_OBJ(callee)) {
         switch(OBJ_TYPE(callee)) {
+            case OBJ_BOUND_METHOD: {
+                Obj_Bound_Method* bound = AS_BOUND_METHOD(callee);
+                return _call(bound->method, arg_count);
+            }
             case OBJ_CLASS: {
                 Obj_Class* class = AS_CLASS(callee);
                 vm.stack_top[-arg_count - 1] = V_OBJ(instance_new(class));
                 return true;
-            };
+            }
             case OBJ_CLOSURE: return _call(AS_CLOSURE(callee), arg_count);
             case OBJ_NATIVE: {
                 Native_Fn native  = AS_NATIVE(callee);
@@ -392,7 +424,7 @@ static bool _call_value(Value callee, int arg_count) {
                 vm.stack_top     -= arg_count + 1;
                 vm_stack_push(result);
                 return true;
-            };
+            }
             default: break; // Non-callable object type.
         }
     }

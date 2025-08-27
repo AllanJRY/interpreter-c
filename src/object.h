@@ -6,12 +6,15 @@
 #include "value.h"
 
 #define OBJ_TYPE(value) (AS_OBJ(value)->type)
+#define IS_BOUND_METHOD(value) is_obj_type(value, OBJ_BOUND_METHOD)
 #define IS_CLASS(value) is_obj_type(value, OBJ_CLASS)
 #define IS_CLOSURE(value) is_obj_type(value, OBJ_CLOSURE)
 #define IS_FUNCTION(value) is_obj_type(value, OBJ_FUNCTION)
 #define IS_INSTANCE(value) is_obj_type(value, OBJ_INSTANCE)
 #define IS_NATIVE(value) is_obj_type(value, OBJ_NATIVE)
 #define IS_STRING(value) is_obj_type(value, OBJ_STRING)
+
+#define AS_BOUND_METHOD(value) ((Obj_Bound_Method*) AS_OBJ(value))
 #define AS_CLASS(value) ((Obj_Class*) AS_OBJ(value))
 #define AS_CLOSURE(value) ((Obj_Closure*) AS_OBJ(value))
 #define AS_FUNCTION(value) ((Obj_Function*) AS_OBJ(value))
@@ -21,6 +24,7 @@
 #define AS_CSTRING(value) (((Obj_String*) AS_OBJ(value))->chars)
 
 typedef enum Obj_Type {
+    OBJ_BOUND_METHOD,
     OBJ_CLASS,
     OBJ_CLOSURE,
     OBJ_FUNCTION,
@@ -75,6 +79,7 @@ typedef struct Obj_Closure {
 typedef struct Obj_Class {
     Obj         obj;
     Obj_String* name;
+    Table       methods;
 } Obj_Class;
 
 typedef struct Obj_Instance {
@@ -82,6 +87,12 @@ typedef struct Obj_Instance {
     Obj_Class* class;
     Table      fields;
 } Obj_Instance;
+
+typedef struct Obj_Bound_Method {
+    Obj          obj;
+    Value        receiver;
+    Obj_Closure* method;
+} Obj_Bound_Method;
 
 Obj_String* string_copy(const char* chars, int length);
 Obj_String* string_take(char* chars, int length);
@@ -97,6 +108,8 @@ Obj_Native* native_new(Native_Fn function);
 Obj_Class* class_new(Obj_String* name);
 
 Obj_Instance* instance_new(Obj_Class* class);
+
+Obj_Bound_Method* bound_method_new(Value receiver, Obj_Closure* method);
 
 void object_print(Value value);
 
