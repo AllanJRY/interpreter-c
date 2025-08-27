@@ -117,6 +117,27 @@ static bool _method_bind(Obj_Class* class, Obj_String* name) {
     return true;
 }
 
+static bool _invoke_from_class(Obj_Class* class, Obj_String* name, int arg_count) {
+    Value method;
+    if (!table_get(&class->methods, name, &method)) {
+        _vm_runtime_error("Undefined property '%s'.", name->chars);
+        return false;
+    }
+    return _call(AS_CLOSURE(method), arg_count);
+}
+
+static bool _invoke(Obj_String* name, int arg_count) {
+    Value receiver         = _vm_stack_peek(arg_count);
+
+    if (!IS_INSTANCE(receiver)) {
+        _vm_runtime_error("Only instances have methods.");
+        return false;
+    }
+
+    Obj_Instance* instance = AS_INSTANCE(receiver);
+    return _invoke_from_class(instance->class, name, arg_count);
+}
+
 static Interpret_Result _vm_run(void) {
     Call_Frame* frame = &vm.frames[vm.frame_count - 1];
 
@@ -330,6 +351,15 @@ static Interpret_Result _vm_run(void) {
             case OP_CALL: {
                 int arg_count = READ_BYTE();
                 if (!_call_value(_vm_stack_peek(arg_count), arg_count)) {
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                frame = &vm.frames[vm.frame_count - 1];
+                break;
+            }
+            case OP_INVOKE: {
+                Obj_String* method = READ_STRING();
+                int arg_count = READ_BYTE();
+                if (!_invoke(method, arg_count)) {
                     return INTERPRET_RUNTIME_ERROR;
                 }
                 frame = &vm.frames[vm.frame_count - 1];

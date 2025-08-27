@@ -33,6 +33,15 @@ static int _instruction_jump(const char* name, int sign, Chunk* chunk, int offse
     return offset + 3;
 }
 
+static int _instruction_invoke(const char* name, Chunk* chunk, int offset) {
+    uint8_t constant_idx = chunk->code[offset + 1];
+    uint8_t arg_count    = chunk->code[offset + 2];
+    printf("%-16s (%d args) %4d '", name, arg_count, constant_idx);
+    value_print(chunk->constants.values[constant_idx]);
+    printf("'\n");
+    return offset + 3;
+}
+
 int instruction_disassemble(Chunk* chunk, int offset) {
     printf("%04d ", offset);
 
@@ -149,6 +158,9 @@ int instruction_disassemble(Chunk* chunk, int offset) {
         }
         case OP_CALL: {
             return _instruction_byte("OP_CALL", chunk, offset);
+        }
+        case OP_INVOKE: {
+            return _instruction_invoke("OP_INVOKE", chunk, offset);
         }
         case OP_CLASS: {
             return instruction_constant("OP_CLASS", chunk, offset);

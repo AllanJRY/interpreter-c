@@ -813,6 +813,10 @@ static void _dot(bool can_assign) {
     if (can_assign && _match(TOKEN_EQUAL)) {
         _expression();
         _compiler_emit_bytes(OP_SET_PROPERTY, name_constant);
+    } else if(_match(TOKEN_LEFT_PAREN)) {
+        uint8_t arg_count = _argument_list();
+        _compiler_emit_bytes(OP_INVOKE, name_constant);
+        _compiler_emit_byte(arg_count);
     } else {
         _compiler_emit_bytes(OP_GET_PROPERTY, name_constant);
     }
