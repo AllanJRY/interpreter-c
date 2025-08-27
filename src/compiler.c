@@ -795,6 +795,7 @@ static void _function(Function_Type type) {
     _parser_consume(TOKEN_LEFT_BRACE, "Expect '{' before function body.");
 
     _block();
+
     Obj_Function* function = _compiler_end(); // No _scope_end call needed because of this call.
 
     _compiler_emit_bytes(OP_CLOSURE, _make_constant(V_OBJ(function)));

@@ -35,7 +35,7 @@ bool table_get(Table* table, Obj_String* key, Value* value) {
 Obj_String* table_find_string(Table* table, const char* chars, int length, uint32_t hash) {
     if (table->count == 0) return NULL;
 
-    uint32_t index = hash % table->cap;
+    uint32_t index = hash & (table->cap - 1); // fast modulo, because table capacity always a power of 2.
     for (;;) {
         Table_Entry* entry = &table->entries[index];
         if (entry->key == NULL) {
@@ -46,7 +46,7 @@ Obj_String* table_find_string(Table* table, const char* chars, int length, uint3
             return entry->key;
         }
 
-        index = (index + 1) % table->cap;
+        index = (index + 1) & (table->cap - 1);
     }
 
 }
@@ -91,7 +91,7 @@ void table_copy(Table* from, Table* to) {
 }
 
 static Table_Entry* _entry_find(Table_Entry* entries, int cap, Obj_String* key) {
-    uint32_t index         = key->hash % cap;
+    uint32_t index         = key->hash & (cap - 1); // fast modulo, because table capacity always a power of 2.
     Table_Entry* tombstone = NULL;
 
     for (;;) {
@@ -110,7 +110,7 @@ static Table_Entry* _entry_find(Table_Entry* entries, int cap, Obj_String* key) 
             return entry;
         }
 
-        index = (index + 1) % cap;
+        index = (index + 1) & (cap - 1);
     }
 }
 
