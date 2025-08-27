@@ -135,6 +135,13 @@ static bool _invoke(Obj_String* name, int arg_count) {
     }
 
     Obj_Instance* instance = AS_INSTANCE(receiver);
+
+    Value value;
+    if(table_get(&instance->fields, name, &value)) {
+        vm.stack_top[-arg_count - 1] = value;
+        return _call_value(value, arg_count);
+    }
+
     return _invoke_from_class(instance->class, name, arg_count);
 }
 
