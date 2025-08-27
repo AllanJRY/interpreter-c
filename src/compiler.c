@@ -70,6 +70,7 @@ typedef struct Compiler {
 
 typedef struct Class_Compiler {
     struct Class_Compiler* enclosing;
+    bool                   has_super_class;
 } Class_Compiler;
 
 static Parse_Rule* _parse_rule_get(Scanner_Token_Type token_type);
@@ -121,6 +122,7 @@ static void _function_call(bool can_assign);
 static void _method(void);
 static void _dot(bool can_assign);
 static void _this(bool can_assign);
+static void _super(bool can_assign);
 
 
 static void          _compiler_init(Compiler* compiler, Function_Type type);
@@ -183,7 +185,7 @@ Parse_Rule rules[] = {
     [TOKEN_OR]            = {NULL,      _or,            PREC_OR},
     [TOKEN_PRINT]         = {NULL,      NULL,           PREC_NONE},
     [TOKEN_RETURN]        = {NULL,      NULL,           PREC_NONE},
-    [TOKEN_SUPER]         = {NULL,      NULL,           PREC_NONE},
+    [TOKEN_SUPER]         = {_super,    NULL,           PREC_NONE},
     [TOKEN_THIS]          = {_this,     NULL,           PREC_NONE},
     [TOKEN_TRUE]          = {_literal,  NULL,           PREC_NONE},
     [TOKEN_VAR]           = {NULL,      NULL,           PREC_NONE},
@@ -250,6 +252,13 @@ static void _declaration_fun(void) {
     _variable_define(global);
 }
 
+static Scanner_Token synthetic_token(const char* text) {
+    Scanner_Token token;
+    token.start  = text;
+    token.length = (int) strlen(text);
+    return token;
+}
+
 static void _declaration_class(void) {
     _parser_consume(TOKEN_IDENTIFIER, "Expect class name.");
     Scanner_Token class_name = parser.previous;
@@ -260,8 +269,26 @@ static void _declaration_class(void) {
     _variable_define(name_constant);
 
     Class_Compiler class_compiler;
-    class_compiler.enclosing = current_class;
-    current_class            = &class_compiler;
+    class_compiler.has_super_class = false;
+    class_compiler.enclosing       = current_class;
+    current_class                  = &class_compiler;
+
+    if (_match(TOKEN_LESS)) {
+        _parser_consume(TOKEN_IDENTIFIER, "Expect superclass name.");
+        _variable(false);
+
+        if (_identifiers_equal(&class_name, &parser.previous)) {
+            _error("A class can't inherit from itself.");
+        }
+
+        _scope_begin();
+        _local_add(synthetic_token("super"));
+        _variable_define(0);
+
+        _variable_named(class_name, false);
+        _compiler_emit_byte(OP_INHERIT);
+        class_compiler.has_super_class = true;
+    }
 
     _variable_named(class_name, false);
     _parser_consume(TOKEN_LEFT_BRACE, "Expect '{' before class body.");
@@ -271,6 +298,9 @@ static void _declaration_class(void) {
     _parser_consume(TOKEN_RIGHT_BRACE, "Expect '}' after class body.");
 
     _compiler_emit_byte(OP_POP);
+    if (class_compiler.has_super_class) {
+        _scope_end();
+    }
     current_class = current_class->enclosing;
 }
 
@@ -831,6 +861,32 @@ static void _this(bool can_assign) {
     }
 
     _variable(false);
+}
+
+static void _super(bool can_assign) {
+    (void) can_assign;
+
+    if (current_class == NULL) {
+        _error("Can't use 'super' outside of a class.");
+    } else if (!current_class->has_super_class) {
+        _error("Can't use 'super' in a class with no superclass.");
+    }
+
+    _parser_consume(TOKEN_DOT, "Expect '.' after 'super'.");
+    _parser_consume(TOKEN_IDENTIFIER, "Expect superclass method name.");
+    uint8_t name = _constant_identifier(&parser.previous);
+
+    _variable_named(synthetic_token("this"), false);
+
+    if(_match(TOKEN_LEFT_PAREN)) {
+        uint8_t arg_count = _argument_list();
+        _variable_named(synthetic_token("super"), false);
+        _compiler_emit_bytes(OP_SUPER_INVOKE, name);
+        _compiler_emit_byte(arg_count);
+    } else {
+        _variable_named(synthetic_token("super"), false);
+        _compiler_emit_bytes(OP_GET_SUPER, name);
+    }
 }
 
 static void _compiler_init(Compiler* compiler, Function_Type type) {

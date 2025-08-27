@@ -280,6 +280,16 @@ static Interpret_Result _vm_run(void) {
                 vm_stack_push(value);
                 break;
             }
+            case OP_GET_SUPER: {
+                Obj_String* name = READ_STRING();
+                Obj_Class* super_class = AS_CLASS(vm_stack_pop());
+
+                if(!_method_bind(super_class, name)) {
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+
+                break;
+            }
             case OP_EQUAL: {
                 Value a = vm_stack_pop();
                 Value b = vm_stack_pop();
@@ -372,6 +382,18 @@ static Interpret_Result _vm_run(void) {
                 frame = &vm.frames[vm.frame_count - 1];
                 break;
             }
+            case OP_SUPER_INVOKE: {
+                Obj_String* method = READ_STRING();
+                int arg_count = READ_BYTE();
+                Obj_Class* super_class = AS_CLASS(vm_stack_pop());
+
+                if (!_invoke_from_class(super_class, method, arg_count)) {
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+
+                frame = &vm.frames[vm.frame_count - 1];
+                break;
+            }
             case OP_CLOSURE: {
                 Obj_Function* function = AS_FUNCTION(READ_CONSTANT());
                 Obj_Closure* closure   = closure_new(function);
@@ -409,6 +431,19 @@ static Interpret_Result _vm_run(void) {
             }
             case OP_CLASS: {
                 vm_stack_push(V_OBJ(class_new(READ_STRING())));
+                break;
+            }
+            case OP_INHERIT: {
+                Value super_class = _vm_stack_peek(1);
+
+                if (!IS_CLASS(super_class)) {
+                    _vm_runtime_error("Superclass must be a class.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+
+                Obj_Class* sub_class = AS_CLASS(_vm_stack_peek(0));
+                table_copy(&AS_CLASS(super_class)->methods, &sub_class->methods);
+                vm_stack_pop();
                 break;
             }
             case OP_METHOD: {

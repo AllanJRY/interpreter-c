@@ -57,7 +57,13 @@
 //pair.second = 2;
 //print pair.first + pair.second;
 
-class CoffeeMaker {
+class Maker {
+    presentation() {
+        print "I'm a Maker";
+    }
+}
+
+class CoffeeMaker < Maker {
 
     // initializer
     init(coffee) {
@@ -72,5 +78,6 @@ class CoffeeMaker {
 }
 
 var maker = CoffeeMaker("Coffee and chicory");
+maker.presentation();
 maker.brew();
 
