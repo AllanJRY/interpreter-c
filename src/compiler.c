@@ -53,6 +53,7 @@ typedef struct Upvalue {
 
 typedef enum Function_Type {
     TYPE_FUNCTION,
+    TYPE_METHOD,
     TYPE_SCRIPT,
 } Function_Type;
 
@@ -65,6 +66,10 @@ typedef struct Compiler {
     Upvalue          upvalues[UINT8_COUNT];
     int              scope_depth;
 } Compiler;
+
+typedef struct Class_Compiler {
+    struct Class_Compiler* enclosing;
+} Class_Compiler;
 
 static Parse_Rule* _parse_rule_get(Scanner_Token_Type token_type);
 
@@ -114,6 +119,7 @@ static void _function(Function_Type type);
 static void _function_call(bool can_assign);
 static void _method(void);
 static void _dot(bool can_assign);
+static void _this(bool can_assign);
 
 
 static void          _compiler_init(Compiler* compiler, Function_Type type);
@@ -138,7 +144,8 @@ static void _parser_advance(void);
 static void _parser_consume(Scanner_Token_Type type, const char* msg);
 
 Parser parser;
-Compiler* current_compiler = NULL;
+Compiler* current_compiler    = NULL;
+Class_Compiler* current_class = NULL;
 Chunk* compiling_chunk;
 
 Parse_Rule rules[] = {
@@ -176,7 +183,7 @@ Parse_Rule rules[] = {
     [TOKEN_PRINT]         = {NULL,      NULL,           PREC_NONE},
     [TOKEN_RETURN]        = {NULL,      NULL,           PREC_NONE},
     [TOKEN_SUPER]         = {NULL,      NULL,           PREC_NONE},
-    [TOKEN_THIS]          = {NULL,      NULL,           PREC_NONE},
+    [TOKEN_THIS]          = {_this,     NULL,           PREC_NONE},
     [TOKEN_TRUE]          = {_literal,  NULL,           PREC_NONE},
     [TOKEN_VAR]           = {NULL,      NULL,           PREC_NONE},
     [TOKEN_WHILE]         = {NULL,      NULL,           PREC_NONE},
@@ -251,13 +258,19 @@ static void _declaration_class(void) {
     _compiler_emit_bytes(OP_CLASS, name_constant);
     _variable_define(name_constant);
 
+    Class_Compiler class_compiler;
+    class_compiler.enclosing = current_class;
+    current_class            = &class_compiler;
+
     _variable_named(class_name, false);
     _parser_consume(TOKEN_LEFT_BRACE, "Expect '{' before class body.");
     while(!_check(TOKEN_RIGHT_BRACE) && !_check(TOKEN_EOF)) {
         _method();
     }
     _parser_consume(TOKEN_RIGHT_BRACE, "Expect '}' after class body.");
+
     _compiler_emit_byte(OP_POP);
+    current_class = current_class->enclosing;
 }
 
 static uint8_t _variable_parse(const char* error_msg) {
@@ -765,7 +778,7 @@ static void _function_call(bool can_assign) {
 static void _method(void) {
     _parser_consume(TOKEN_IDENTIFIER, "Expect method name.");
     uint8_t constant_idx = _constant_identifier(&parser.previous);
-    Function_Type type = TYPE_FUNCTION;
+    Function_Type type = TYPE_METHOD;
     _function(type);
     _compiler_emit_bytes(OP_METHOD, constant_idx);
 }
@@ -787,7 +800,6 @@ static uint8_t _argument_list(void) {
 }
 
 static void _dot(bool can_assign) {
-
     _parser_consume(TOKEN_IDENTIFIER, "Expect property name after '.'.");
     uint8_t name_constant = _constant_identifier(&parser.previous);
     if (can_assign && _match(TOKEN_EQUAL)) {
@@ -798,6 +810,16 @@ static void _dot(bool can_assign) {
     }
 }
 
+static void _this(bool can_assign) {
+    (void) can_assign;
+
+    if(current_class == NULL) {
+        _error("Can't use 'this' outside of a class.");
+        return;
+    }
+
+    _variable(false);
+}
 
 static void _compiler_init(Compiler* compiler, Function_Type type) {
     compiler->enclosing   = current_compiler;
@@ -812,9 +834,14 @@ static void _compiler_init(Compiler* compiler, Function_Type type) {
     }
     Local* local          = &current_compiler->locals[current_compiler->local_count++];
     local->depth          = 0;
-    local->is_captured          = false;
-    local->name.start     = "";
-    local->name.length    = 0;
+    local->is_captured    = false;
+    if (type != TYPE_FUNCTION) {
+        local->name.start     = "this";
+        local->name.length    = 4;
+    } else {
+        local->name.start     = "";
+        local->name.length    = 0;
+    }
 }
 
 static Obj_Function* _compiler_end(void) {

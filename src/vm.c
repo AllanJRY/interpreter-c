@@ -409,11 +409,12 @@ static bool _call_value(Value callee, int arg_count) {
     if (IS_OBJ(callee)) {
         switch(OBJ_TYPE(callee)) {
             case OBJ_BOUND_METHOD: {
-                Obj_Bound_Method* bound = AS_BOUND_METHOD(callee);
+                Obj_Bound_Method* bound      = AS_BOUND_METHOD(callee);
+                vm.stack_top[-arg_count - 1] = bound->receiver;
                 return _call(bound->method, arg_count);
             }
             case OBJ_CLASS: {
-                Obj_Class* class = AS_CLASS(callee);
+                Obj_Class* class             = AS_CLASS(callee);
                 vm.stack_top[-arg_count - 1] = V_OBJ(instance_new(class));
                 return true;
             }
