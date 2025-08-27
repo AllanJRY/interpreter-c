@@ -57,11 +57,20 @@
 //pair.second = 2;
 //print pair.first + pair.second;
 
-class Scone {
-    topping(first, second) {
-        print "scone with " + first + " and " + second;
+class CoffeeMaker {
+
+    // initializer
+    init(coffee) {
+        this.coffee = coffee;
     }
+
+    brew() {
+        print "Enjoy your cup of " + this.coffee;
+        this.coffee = nil;
+    }
+
 }
 
-var scone = Scone();
-scone.topping("berries", "cream");
+var maker = CoffeeMaker("Coffee and chicory");
+maker.brew();
+

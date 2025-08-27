@@ -74,6 +74,7 @@ static void _mark_roots(void) {
 
     mark_table(&vm.globals);
     mark_compiler_roots();
+    mark_object((Obj*) vm.init_string);
 }
 
 static void _trace_references(void) {

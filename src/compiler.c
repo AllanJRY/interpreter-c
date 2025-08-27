@@ -53,6 +53,7 @@ typedef struct Upvalue {
 
 typedef enum Function_Type {
     TYPE_FUNCTION,
+    TYPE_INITIALIZER,
     TYPE_METHOD,
     TYPE_SCRIPT,
 } Function_Type;
@@ -485,6 +486,10 @@ static void _statement_return(void) {
     if(_match(TOKEN_SEMICOLON)) {
         _compiler_emit_return();
     } else {
+        if (current_compiler->type == TYPE_INITIALIZER) {
+            _error("Can't return a value from an initializer.");
+        }
+
         _expression();
         _parser_consume(TOKEN_SEMICOLON, "Expect ';' after return value.");
         _compiler_emit_byte(OP_RETURN);
@@ -779,6 +784,9 @@ static void _method(void) {
     _parser_consume(TOKEN_IDENTIFIER, "Expect method name.");
     uint8_t constant_idx = _constant_identifier(&parser.previous);
     Function_Type type = TYPE_METHOD;
+    if (parser.previous.length == 4 && memcmp(parser.previous.start, "init", 4) == 0) {
+        type = TYPE_INITIALIZER;
+    }
     _function(type);
     _compiler_emit_bytes(OP_METHOD, constant_idx);
 }
@@ -868,7 +876,12 @@ static void _compiler_emit_bytes(uint8_t byte1, uint8_t byte2) {
 }
 
 static void _compiler_emit_return(void) {
-    _compiler_emit_byte(OP_NIL);
+    if (current_compiler->type == TYPE_INITIALIZER) {
+        _compiler_emit_bytes(OP_GET_LOCAL, 0);
+    } else {
+        _compiler_emit_byte(OP_NIL);
+    }
+    
     _compiler_emit_byte(OP_RETURN);
 }
 
